@@ -44,6 +44,20 @@ def has_gemini_key() -> bool:
     return keyring.get_password(_SERVICE, _GEMINI_KEY_USER) is not None
 
 
+# ── Key routing ──────────────────────────────────────────────────────────────
+
+def store_key_by_prefix(key: str) -> str:
+    """Route an API key to the correct Credential Manager slot based on its prefix.
+
+    Returns the provider name ('anthropic' or 'gemini').
+    """
+    if key.startswith("sk-ant-"):
+        store_api_key(key)
+        return "anthropic"
+    store_gemini_key(key)
+    return "gemini"
+
+
 # ── Provider detection ────────────────────────────────────────────────────────
 
 def configured_provider() -> str | None:
