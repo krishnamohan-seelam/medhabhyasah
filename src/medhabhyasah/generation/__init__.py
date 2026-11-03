@@ -7,10 +7,13 @@ logged, stored in memory beyond this call, or returned to any client.
 """
 import json
 from dataclasses import dataclass
+from pathlib import Path
 
 import anthropic
 
 from medhabhyasah import credentials
+
+_PROMPT_RULES = (Path(__file__).parent / "quiz_generator_prompt.md").read_text(encoding="utf-8")
 
 # Anthropic claude-opus-5-5 pricing per 1M tokens
 _ANTHROPIC_MODEL = "claude-opus-5-5"
@@ -72,25 +75,7 @@ studying {subject} ({exam} board). Topic: {topic}.{ref_block}
 
 Difficulty distribution: {easy_n} Easy, {medium_n} Medium, {hard_n} Hard.
 {worked_rule}
-Return ONLY a JSON array — no prose, no markdown, no code fences.
-Each element must have exactly these fields:
-
-{{
-  "difficulty": "Easy" | "Medium" | "Hard",
-  "type": "mcq",
-  "question": "<question text — plain text, no HTML, no numbering>",
-  "options": ["<A>", "<B>", "<C>", "<D>"],
-  "answer": 0 | 1 | 2 | 3,
-  "explanation": "<explanation>",
-  "source_quote": "<verbatim sentence from reference, or empty string>"
-}}
-
-Rules:
-- Exactly 4 options per question
-- answer is the 0-based index of the correct option (0, 1, 2, or 3)
-- question, options, and explanation must be plain text only — no HTML, no markdown, no links
-- Do not include question numbers in question text
-- Return ONLY the JSON array, starting with [ and ending with ]
+{_PROMPT_RULES}
 """
 
 
