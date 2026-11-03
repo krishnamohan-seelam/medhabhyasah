@@ -4,8 +4,13 @@ from pathlib import Path
 
 
 def get_db_path() -> Path:
-    data_dir = Path.home() / ".medhabhyasah"
-    data_dir.mkdir(exist_ok=True)
+    import os
+    appdata = os.environ.get("APPDATA")
+    if appdata:
+        data_dir = Path(appdata) / "Medhabhyasah"
+    else:
+        data_dir = Path.home() / ".medhabhyasah"
+    data_dir.mkdir(parents=True, exist_ok=True)
     return data_dir / "medhabhyasah.db"
 
 
