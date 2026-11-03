@@ -30,6 +30,8 @@
   --pen:      #2346c7;
   --pen-dark: #1a3596;
   --pen-wash: #e9edfb;
+  --bad:      #b3261e;
+  --bad-wash: #fcebe9;
   --font: "Source Sans 3", "Segoe UI Variable Text", "Segoe UI", Roboto, Arial, sans-serif;
   color-scheme: light;
 }
@@ -48,6 +50,7 @@ body {
 }
 
 h1, h2, h3, p { margin: 0; }
+label { display: block; }
 
 :focus-visible { outline: 3px solid var(--pen); outline-offset: 2px; }
 
@@ -61,16 +64,8 @@ header {
   background: var(--surface);
   border-bottom: 1px solid var(--line);
 }
-.logo {
-  font-size: 20px;
-  font-weight: 600;
-  letter-spacing: -.01em;
-  color: var(--pen);
-}
-.tagline {
-  font-size: 14px;
-  color: var(--muted);
-}
+.logo { font-size: 20px; font-weight: 600; letter-spacing: -.01em; color: var(--pen); }
+.tagline { font-size: 14px; color: var(--muted); }
 
 /* ── Main layout ── */
 main {
@@ -94,115 +89,255 @@ main {
   flex-direction: column;
   gap: 20px;
 }
-.zone-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
+.zone-header { display: flex; align-items: center; gap: 10px; }
 .zone-icon {
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  font-size: 20px;
-  flex: none;
+  display: grid; place-items: center;
+  width: 40px; height: 40px;
+  border-radius: 10px; font-size: 20px; flex: none;
 }
 .student-zone .zone-icon { background: var(--pen-wash); }
 .parent-zone  .zone-icon { background: #fdf2dd; }
+.zone-title   { font-size: 18px; font-weight: 600; }
+.zone-subtitle { font-size: 14px; color: var(--muted); margin-top: 2px; }
 
-.zone-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--ink);
+/* ── Student list ── */
+.profile-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+.profile-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px; border: 1.5px solid var(--line);
+  border-radius: 10px; background: var(--surface);
+  cursor: pointer; font-weight: 600;
 }
-.zone-subtitle {
-  font-size: 14px;
-  color: var(--muted);
-  margin-top: 2px;
-}
-
-/* ── Student profile list ── */
-.profile-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  flex: 1;
-}
+.profile-item:hover { border-color: var(--pen); background: var(--pen-wash); }
+.profile-meta { font-size: 13px; font-weight: 400; color: var(--muted); }
 
 .empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 40px 16px;
-  border: 1.5px dashed var(--line);
-  border-radius: 10px;
-  color: var(--muted);
-  text-align: center;
-  flex: 1;
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 10px;
+  padding: 40px 16px; border: 1.5px dashed var(--line);
+  border-radius: 10px; color: var(--muted); text-align: center; flex: 1;
 }
-.empty-state .empty-icon {
-  font-size: 32px;
-  opacity: .5;
-}
-.empty-state p {
-  font-size: 15px;
-  line-height: 1.4;
-}
+.empty-icon { font-size: 32px; opacity: .5; }
+.empty-state p { font-size: 15px; line-height: 1.4; }
 
 /* ── Buttons ── */
 button {
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-  border-radius: 9px;
-  min-height: 46px;
-  padding: 10px 22px;
-  border: 1.5px solid var(--pen);
-  background: var(--pen);
-  color: #fff;
+  font: inherit; font-weight: 600; cursor: pointer;
+  border-radius: 9px; min-height: 46px; padding: 10px 22px;
+  border: 1.5px solid var(--pen); background: var(--pen); color: #fff;
   transition: background .12s, border-color .12s;
 }
-button:hover  { background: var(--pen-dark); border-color: var(--pen-dark); }
-button.sec {
-  background: transparent;
-  border-color: var(--line);
-  color: var(--ink);
-}
+button:hover { background: var(--pen-dark); border-color: var(--pen-dark); }
+button:disabled { opacity: .4; cursor: default; }
+button.sec { background: transparent; border-color: var(--line); color: var(--ink); }
 button.sec:hover { background: var(--paper); border-color: var(--ink); }
+.enter-pin-btn { width: 100%; font-size: 16px; }
 
-.enter-pin-btn {
-  width: 100%;
-  font-size: 16px;
-}
+/* ── Parent zone ── */
+.parent-zone-body { flex: 1; display: flex; flex-direction: column; gap: 14px; justify-content: center; }
+.parent-hint { font-size: 14px; color: var(--muted); text-align: center; line-height: 1.45; }
 
-/* ── Parent zone extras ── */
-.parent-zone-body {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  justify-content: center;
+/* ── Form inputs ── */
+input[type="text"], input[type="password"], input[type="number"], select, textarea {
+  width: 100%; padding: 10px 14px; font: inherit;
+  border: 1.5px solid var(--line); border-radius: 8px;
+  background: var(--surface); color: var(--ink);
+  margin-top: 6px;
 }
-.parent-hint {
-  font-size: 14px;
-  color: var(--muted);
-  text-align: center;
-  line-height: 1.45;
+input:focus, select:focus, textarea:focus {
+  outline: none; border-color: var(--pen);
 }
+.field { margin-bottom: 16px; }
+.field-label { font-weight: 600; font-size: 15px; }
+.field-hint { font-size: 13px; color: var(--muted); margin-top: 4px; }
+.error-msg { color: var(--bad); font-size: 14px; margin-top: 8px; min-height: 20px; }
+
+/* ── Setup wizard overlay ── */
+#setupOverlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: var(--paper);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+#setupOverlay.hide { display: none; }
+
+.setup-card {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 16px; padding: 40px 44px;
+  max-width: 460px; width: 100%;
+}
+.setup-steps {
+  display: flex; gap: 8px; margin-bottom: 32px;
+}
+.setup-step-dot {
+  flex: 1; height: 4px; border-radius: 2px; background: var(--line);
+}
+.setup-step-dot.done  { background: var(--pen); }
+.setup-step-dot.active { background: var(--pen); opacity: .5; }
+
+.setup-title { font-size: 24px; font-weight: 600; margin-bottom: 6px; }
+.setup-desc  { font-size: 15px; color: var(--muted); margin-bottom: 28px; line-height: 1.5; }
+
+.setup-footer { display: flex; gap: 10px; margin-top: 24px; }
+.setup-footer button { flex: 1; }
+
+.step-pane { display: none; }
+.step-pane.active { display: block; }
+
+/* ── Parent dashboard ── */
+.parent-dashboard { flex: 1; display: flex; flex-direction: column; gap: 16px; }
+
+.gen-summary {
+  cursor: pointer; font-weight: 600; font-size: 15px;
+  padding: 10px 0; list-style: none; color: var(--pen);
+  user-select: none;
+}
+.gen-summary::-webkit-details-marker { display: none; }
+.gen-form { padding: 16px 0 4px; }
+.field-optional { font-weight: 400; color: var(--muted); font-size: 13px; }
+
+.request-list { display: flex; flex-direction: column; gap: 8px; }
+.req-card {
+  border: 1.5px solid var(--line); border-radius: 10px;
+  padding: 14px 16px; display: flex; flex-direction: column; gap: 6px;
+}
+.req-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.req-title { font-weight: 600; font-size: 15px; }
+.req-badge {
+  font-size: 12px; font-weight: 600; padding: 2px 8px;
+  border-radius: 20px; white-space: nowrap;
+}
+.badge-pending   { background: #e8f4fd; color: #1565c0; }
+.badge-generating { background: #fff3cd; color: #856404; }
+.badge-complete  { background: #d4edda; color: #155724; }
+.badge-failed    { background: var(--bad-wash); color: var(--bad); }
+.req-meta { font-size: 13px; color: var(--muted); }
+.req-generate-btn { align-self: flex-start; min-height: 34px; padding: 6px 16px; font-size: 14px; margin-top: 4px; }
+
+/* ── Dialog / overlay ── */
+.dialog-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(22, 35, 63, .5);
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+}
+.dialog-overlay.hide { display: none; }
+.dialog-card {
+  background: var(--surface); border-radius: 16px;
+  padding: 32px 36px; max-width: 420px; width: 100%;
+  box-shadow: 0 8px 40px rgba(0,0,0,.18);
+}
+.dialog-title { font-size: 20px; font-weight: 600; margin-bottom: 20px; }
+.dialog-footer { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+.btn-secondary { background: transparent; border-color: var(--line); color: var(--ink); }
+.btn-secondary:hover { background: var(--paper); border-color: var(--ink); }
+
+/* ── Progress ── */
+.progress-card { text-align: center; }
+.progress-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; text-align: left; }
+.pstep {
+  padding: 12px 16px; border-radius: 8px;
+  font-size: 15px; color: var(--muted);
+  border: 1.5px solid var(--line);
+}
+.pstep-active { color: var(--pen); border-color: var(--pen); font-weight: 600; background: var(--pen-wash); }
+.pstep-done   { color: var(--muted); text-decoration: line-through; }
+.progress-note { font-size: 13px; color: var(--muted); margin-top: 16px; }
 
 /* ── Responsive ── */
 @media (max-width: 680px) {
   main { grid-template-columns: 1fr; margin: 20px auto; }
+  .setup-card { padding: 28px 20px; }
+  .dialog-card { padding: 24px 20px; }
 }
 </style>
 </head>
 <body>
+
+<!-- ══ Setup wizard overlay (shown on first run) ══ -->
+<div id="setupOverlay" role="dialog" aria-modal="true" aria-label="First-time setup">
+  <div class="setup-card">
+    <div class="setup-steps">
+      <div class="setup-step-dot active" id="dot1"></div>
+      <div class="setup-step-dot"        id="dot2"></div>
+      <div class="setup-step-dot"        id="dot3"></div>
+    </div>
+
+    <!-- Step 1: PIN -->
+    <div class="step-pane active" id="step1">
+      <h1 class="setup-title">Set a parent PIN</h1>
+      <p class="setup-desc">This PIN protects the parent zone. It is stored securely in Windows Credential Manager — not in any file.</p>
+      <div class="field">
+        <label class="field-label" for="pin1">PIN (4–8 digits)</label>
+        <input type="password" id="pin1" inputmode="numeric" maxlength="8" autocomplete="new-password" placeholder="Enter PIN">
+      </div>
+      <div class="field">
+        <label class="field-label" for="pin2">Confirm PIN</label>
+        <input type="password" id="pin2" inputmode="numeric" maxlength="8" autocomplete="new-password" placeholder="Re-enter PIN">
+      </div>
+      <div class="error-msg" id="pinError" role="alert"></div>
+      <div class="setup-footer">
+        <button id="pinNext" type="button">Next</button>
+      </div>
+    </div>
+
+    <!-- Step 2: API key -->
+    <div class="step-pane" id="step2">
+      <h1 class="setup-title">Add your Anthropic API key</h1>
+      <p class="setup-desc">The key is stored in Windows Credential Manager. It is never written to a file, shown in the app, or sent to a student screen.</p>
+      <div class="field">
+        <label class="field-label" for="apiKey">API key</label>
+        <input type="password" id="apiKey" autocomplete="off" placeholder="sk-ant-…">
+        <p class="field-hint">Get your key at console.anthropic.com → API Keys.</p>
+      </div>
+      <div class="error-msg" id="keyError" role="alert"></div>
+      <div class="setup-footer">
+        <button id="keyNext" type="button">Next</button>
+      </div>
+    </div>
+
+    <!-- Step 3: First student -->
+    <div class="step-pane" id="step3">
+      <h1 class="setup-title">Add the first student</h1>
+      <p class="setup-desc">You can add more students later from the parent dashboard settings.</p>
+      <div class="field">
+        <label class="field-label" for="nickname">Nickname</label>
+        <input type="text" id="nickname" placeholder="e.g. Arjun" autocomplete="off">
+        <p class="field-hint">Used in the student zone. No full names needed.</p>
+      </div>
+      <div class="field">
+        <label class="field-label" for="grade">Class / Grade</label>
+        <select id="grade">
+          <option value="">Select class…</option>
+          <option value="5">Class 5</option>
+          <option value="6">Class 6</option>
+          <option value="7">Class 7</option>
+          <option value="8">Class 8</option>
+          <option value="9">Class 9</option>
+          <option value="10">Class 10</option>
+          <option value="11">Class 11</option>
+          <option value="12">Class 12</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="field-label" for="exam">Board / Exam</label>
+        <select id="exam">
+          <option value="">Select board…</option>
+          <option value="CBSE">CBSE</option>
+          <option value="ICSE">ICSE</option>
+          <option value="State Board">State Board</option>
+          <option value="IB">IB</option>
+        </select>
+      </div>
+      <div class="error-msg" id="studentError" role="alert"></div>
+      <div class="setup-footer">
+        <button id="studentDone" type="button">Finish setup</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Main app (hidden until setup complete) ══ -->
+<div id="appShell" class="hide" style="display:contents">
 
 <header>
   <span class="logo">Medhabhyasah</span>
@@ -220,7 +355,6 @@ button.sec:hover { background: var(--paper); border-color: var(--ink); }
         <p class="zone-subtitle">Choose your profile to start practising</p>
       </div>
     </div>
-
     <ul class="profile-list" id="profileList">
       <li class="empty-state" id="emptyProfiles">
         <span class="empty-icon" aria-hidden="true">&#x1F464;</span>
@@ -239,24 +373,418 @@ button.sec:hover { background: var(--paper); border-color: var(--ink); }
       </div>
     </div>
 
-    <div class="parent-zone-body">
-      <button class="enter-pin-btn" id="enterPinBtn" type="button">
-        Enter Parent PIN
-      </button>
+    <!-- Locked state -->
+    <div class="parent-zone-body" id="parentLocked">
+      <button class="enter-pin-btn" id="enterPinBtn" type="button">Enter Parent PIN</button>
       <p class="parent-hint">
         The parent zone lets you generate new questions,<br>
         review and approve them, and manage student profiles.
       </p>
     </div>
+
+    <!-- Unlocked dashboard (hidden until PIN verified) -->
+    <div class="parent-dashboard hide" id="parentDashboard">
+
+      <!-- New generation form -->
+      <details id="newGenDetails">
+        <summary class="gen-summary">&#x2795; New question set</summary>
+        <div class="gen-form" id="genForm">
+          <div class="field">
+            <label class="field-label" for="genSubject">Subject</label>
+            <select id="genSubject">
+              <option value="">Select subject…</option>
+              <option value="Science">Science</option>
+              <option value="Maths">Maths</option>
+              <option value="Social Studies">Social Studies</option>
+              <option value="English">English</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="field-label" for="genTopic">Topic</label>
+            <input type="text" id="genTopic" placeholder="e.g. Photosynthesis" autocomplete="off">
+          </div>
+          <div class="field">
+            <label class="field-label" for="genGrade">Class</label>
+            <select id="genGrade">
+              <option value="">Select class…</option>
+              <option value="5">Class 5</option>
+              <option value="6">Class 6</option>
+              <option value="7">Class 7</option>
+              <option value="8">Class 8</option>
+              <option value="9">Class 9</option>
+              <option value="10">Class 10</option>
+              <option value="11">Class 11</option>
+              <option value="12">Class 12</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="field-label" for="genExam">Board</label>
+            <select id="genExam">
+              <option value="">Select board…</option>
+              <option value="CBSE">CBSE</option>
+              <option value="ICSE">ICSE</option>
+              <option value="State Board">State Board</option>
+              <option value="IB">IB</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="field-label" for="genCount">Number of questions</label>
+            <input type="number" id="genCount" min="1" max="50" value="10">
+          </div>
+          <div class="field">
+            <label class="field-label" for="genRefs">Reference text <span class="field-optional">(optional)</span></label>
+            <textarea id="genRefs" rows="3" placeholder="Paste chapter excerpt or notes…"></textarea>
+          </div>
+          <div class="error-msg" id="genError" role="alert"></div>
+          <button id="genSubmitBtn" type="button">Generate questions</button>
+        </div>
+      </details>
+
+      <!-- Past requests list -->
+      <div id="requestList" class="request-list"></div>
+
+    </div><!-- end parentDashboard -->
   </section>
 
 </main>
+</div><!-- end appShell -->
+
+<!-- ── PIN dialog ── -->
+<div id="pinDialog" class="dialog-overlay hide" role="dialog" aria-modal="true" aria-label="Enter parent PIN">
+  <div class="dialog-card">
+    <h2 class="dialog-title">Enter parent PIN</h2>
+    <div class="field">
+      <label class="field-label" for="pinInput">PIN</label>
+      <input type="password" id="pinInput" inputmode="numeric" maxlength="8" autocomplete="current-password" placeholder="Enter PIN">
+    </div>
+    <div class="error-msg" id="pinDialogError" role="alert"></div>
+    <div class="dialog-footer">
+      <button id="pinCancel" type="button" class="btn-secondary">Cancel</button>
+      <button id="pinConfirm" type="button">Unlock</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Generation progress overlay ── -->
+<div id="genProgress" class="dialog-overlay hide" role="status" aria-live="polite" aria-label="Generating questions">
+  <div class="dialog-card progress-card">
+    <h2 class="dialog-title">Generating questions…</h2>
+    <ul class="progress-steps" id="progressSteps">
+      <li class="pstep pstep-active" id="ps1">Sending request to AI</li>
+      <li class="pstep" id="ps2">Receiving questions</li>
+      <li class="pstep" id="ps3">Running safety checks</li>
+    </ul>
+    <p class="progress-note">This usually takes 30–90 seconds.</p>
+  </div>
+</div>
 
 <script>
-  // Placeholder: PIN button handler (full flow added in later issues)
-  document.getElementById("enterPinBtn").addEventListener("click", function () {
-    alert("Parent PIN entry coming soon.");
+(function () {
+  "use strict";
+
+  // ── helpers ──────────────────────────────────────────────────────────────
+  function $(id) { return document.getElementById(id); }
+  function show(el) { el.classList.remove("hide"); }
+  function hide(el) { el.classList.add("hide"); }
+  function setError(id, msg) { $(id).textContent = msg; }
+  function clearError(id)    { $(id).textContent = ""; }
+
+  async function post(path, body) {
+    const r = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.detail || "Request failed");
+    }
+    return r.json();
+  }
+
+  // ── setup wizard ─────────────────────────────────────────────────────────
+  function goToStep(n) {
+    ["step1","step2","step3"].forEach(function(id, i) {
+      var active = (i + 1) === n;
+      $(id).className = "step-pane" + (active ? " active" : "");
+    });
+    ["dot1","dot2","dot3"].forEach(function(id, i) {
+      var d = $(id);
+      d.className = "setup-step-dot" + (i + 1 < n ? " done" : i + 1 === n ? " active" : "");
+    });
+  }
+
+  $("pinNext").addEventListener("click", async function () {
+    clearError("pinError");
+    var pin = $("pin1").value, conf = $("pin2").value;
+    if (!/^\d{4,8}$/.test(pin)) { setError("pinError", "PIN must be 4–8 digits."); return; }
+    if (pin !== conf)            { setError("pinError", "PINs do not match."); return; }
+    try {
+      await post("/api/setup/pin", { pin: pin });
+      goToStep(2);
+    } catch (e) { setError("pinError", e.message); }
   });
+
+  $("keyNext").addEventListener("click", async function () {
+    clearError("keyError");
+    var key = $("apiKey").value.trim();
+    if (!key) { setError("keyError", "API key is required."); return; }
+    try {
+      await post("/api/setup/apikey", { api_key: key });
+      goToStep(3);
+    } catch (e) { setError("keyError", e.message); }
+  });
+
+  $("studentDone").addEventListener("click", async function () {
+    clearError("studentError");
+    var nick  = $("nickname").value.trim();
+    var grade = $("grade").value;
+    var exam  = $("exam").value;
+    if (!nick)  { setError("studentError", "Nickname is required."); return; }
+    if (!grade) { setError("studentError", "Please select a class."); return; }
+    if (!exam)  { setError("studentError", "Please select a board."); return; }
+    try {
+      await post("/api/setup/student", { nickname: nick, grade: grade, exam: exam });
+      hide($("setupOverlay"));
+      showHome();
+    } catch (e) { setError("studentError", e.message); }
+  });
+
+  // ── home screen ──────────────────────────────────────────────────────────
+  function showHome() {
+    var shell = $("appShell");
+    shell.style.display = "";
+    shell.classList.remove("hide");
+    loadStudents();
+  }
+
+  async function loadStudents() {
+    try {
+      var students = await fetch("/api/students").then(function(r) { return r.json(); });
+      var list = $("profileList");
+      if (students.length === 0) return;
+      // Clear empty state
+      list.innerHTML = "";
+      students.forEach(function (s) {
+        var li = document.createElement("li");
+        li.className = "profile-item";
+        var name = document.createElement("span");
+        name.textContent = s.nickname;
+        var meta = document.createElement("span");
+        meta.className = "profile-meta";
+        meta.textContent = "Class " + s.grade + " · " + s.exam;
+        li.appendChild(name);
+        li.appendChild(meta);
+        list.appendChild(li);
+      });
+    } catch (_) { /* non-fatal */ }
+  }
+
+  // ── Parent zone PIN dialog ───────────────────────────────────────────────
+  var _parentPin = "";
+
+  $("enterPinBtn").addEventListener("click", function () {
+    $("pinInput").value = "";
+    clearError("pinDialogError");
+    show($("pinDialog"));
+    $("pinInput").focus();
+  });
+
+  $("pinCancel").addEventListener("click", function () {
+    hide($("pinDialog"));
+  });
+
+  $("pinConfirm").addEventListener("click", async function () {
+    clearError("pinDialogError");
+    var pin = $("pinInput").value;
+    if (!/^\d{4,8}$/.test(pin)) {
+      setError("pinDialogError", "PIN must be 4–8 digits.");
+      return;
+    }
+    try {
+      await post("/api/parent/verify-pin", { pin: pin });
+      _parentPin = pin;
+      hide($("pinDialog"));
+      unlockParentZone();
+    } catch (e) {
+      setError("pinDialogError", "Incorrect PIN.");
+    }
+  });
+
+  $("pinInput").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") $("pinConfirm").click();
+  });
+
+  function unlockParentZone() {
+    hide($("parentLocked"));
+    show($("parentDashboard"));
+    loadGenerationRequests();
+  }
+
+  // ── Generation request list ───────────────────────────────────────────────
+  async function loadGenerationRequests() {
+    try {
+      var reqs = await fetch("/api/parent/generation-requests", {
+        headers: { "X-Parent-Pin": _parentPin },
+      }).then(function (r) { return r.json(); });
+
+      var list = $("requestList");
+      list.innerHTML = "";
+      if (reqs.length === 0) {
+        var empty = document.createElement("p");
+        empty.style.cssText = "font-size:14px;color:var(--muted);margin:0";
+        empty.textContent = "No question sets yet. Use the form above to generate one.";
+        list.appendChild(empty);
+        return;
+      }
+
+      reqs.forEach(function (req) {
+        var card = document.createElement("div");
+        card.className = "req-card";
+
+        var header = document.createElement("div");
+        header.className = "req-card-header";
+
+        var title = document.createElement("span");
+        title.className = "req-title";
+        title.textContent = req.topic + " (" + req.subject + ")";
+
+        var badge = document.createElement("span");
+        badge.className = "req-badge badge-" + req.status;
+        badge.textContent = req.status;
+
+        header.appendChild(title);
+        header.appendChild(badge);
+
+        var meta = document.createElement("div");
+        meta.className = "req-meta";
+        var costStr = req.api_cost_usd != null
+          ? " · $" + Number(req.api_cost_usd).toFixed(4)
+          : "";
+        meta.textContent = "Class " + req.grade + " · " + req.exam + " · " + req.question_count + " questions" + costStr;
+
+        card.appendChild(header);
+        card.appendChild(meta);
+
+        if (req.status === "pending" || req.status === "failed") {
+          var btn = document.createElement("button");
+          btn.className = "req-generate-btn";
+          btn.textContent = "Generate questions";
+          btn.dataset.reqId = req.id;
+          btn.addEventListener("click", function () {
+            startGeneration(Number(this.dataset.reqId));
+          });
+          card.appendChild(btn);
+        }
+
+        list.appendChild(card);
+      });
+    } catch (_) { /* non-fatal */ }
+  }
+
+  // ── Generation progress ───────────────────────────────────────────────────
+  async function startGeneration(reqId) {
+    // Show progress overlay and animate steps
+    show($("genProgress"));
+    var steps = [$("ps1"), $("ps2"), $("ps3")];
+    steps.forEach(function (s) { s.className = "pstep"; });
+    steps[0].className = "pstep pstep-active";
+
+    var t1 = setTimeout(function () {
+      steps[0].className = "pstep pstep-done";
+      steps[1].className = "pstep pstep-active";
+    }, 6000);
+    var t2 = setTimeout(function () {
+      steps[1].className = "pstep pstep-done";
+      steps[2].className = "pstep pstep-active";
+    }, 25000);
+
+    try {
+      var result = await fetch(
+        "/api/parent/generation-requests/" + reqId + "/generate",
+        { method: "POST", headers: { "X-Parent-Pin": _parentPin } }
+      ).then(function (r) {
+        if (!r.ok) return r.json().then(function (e) { throw new Error(e.detail || "Generation failed"); });
+        return r.json();
+      });
+
+      clearTimeout(t1); clearTimeout(t2);
+      steps.forEach(function (s) { s.className = "pstep pstep-done"; });
+
+      setTimeout(function () {
+        hide($("genProgress"));
+        loadGenerationRequests();
+        if (result.auto_checked > 0) {
+          alert(
+            "Done! " + result.question_count + " questions generated.\n" +
+            result.auto_checked + " passed safety checks (auto_checked).\n" +
+            (result.draft > 0 ? result.draft + " need review (draft)." : "")
+          );
+        }
+      }, 800);
+    } catch (e) {
+      clearTimeout(t1); clearTimeout(t2);
+      hide($("genProgress"));
+      alert("Generation failed: " + e.message);
+      loadGenerationRequests();
+    }
+  }
+
+  // ── Generation form ───────────────────────────────────────────────────────
+  $("genSubmitBtn").addEventListener("click", async function () {
+    clearError("genError");
+    var subject = $("genSubject").value;
+    var topic   = $("genTopic").value.trim();
+    var grade   = $("genGrade").value;
+    var exam    = $("genExam").value;
+    var count   = parseInt($("genCount").value, 10);
+    var refs    = $("genRefs").value.trim();
+
+    if (!subject) { setError("genError", "Select a subject."); return; }
+    if (!topic)   { setError("genError", "Enter a topic."); return; }
+    if (!grade)   { setError("genError", "Select a class."); return; }
+    if (!exam)    { setError("genError", "Select a board."); return; }
+    if (!count || count < 1 || count > 50) { setError("genError", "Enter 1–50 questions."); return; }
+
+    try {
+      var r = await fetch("/api/parent/generation-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Parent-Pin": _parentPin },
+        body: JSON.stringify({
+          subject: subject, topic: topic, grade: grade, exam: exam,
+          references_text: refs, question_count: count,
+        }),
+      });
+      if (!r.ok) {
+        var err = await r.json().catch(function () { return {}; });
+        throw new Error(err.detail || "Request failed");
+      }
+      var data = await r.json();
+      $("newGenDetails").open = false;
+      startGeneration(data.id);
+    } catch (e) {
+      setError("genError", e.message);
+    }
+  });
+
+  // ── bootstrap ────────────────────────────────────────────────────────────
+  fetch("/api/setup/status")
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (data.needs_setup) {
+        show($("setupOverlay"));
+        $("pin1").focus();
+      } else {
+        hide($("setupOverlay"));
+        showHome();
+      }
+    })
+    .catch(function () {
+      // If status check fails, show home screen anyway
+      hide($("setupOverlay"));
+      showHome();
+    });
+}());
 </script>
 
 </body>
