@@ -173,7 +173,7 @@ def test_change_pin_succeeds(tmp_path):
     with patch("medhabhyasah.credentials.keyring", mock_kr):
         c = _make_app(tmp_path)
         r = c.post("/api/parent/settings/pin",
-                   json={"new_pin": "5678", "confirm_pin": "5678"},
+                   json={"current_pin": "1234", "new_pin": "5678", "confirm_pin": "5678"},
                    headers={"X-Parent-Pin": "1234"})
     assert r.status_code == 200
     assert r.json()["ok"] is True
@@ -184,16 +184,25 @@ def test_change_pin_mismatched_confirms_rejected(tmp_path):
     with patch("medhabhyasah.credentials.keyring", _pin_mock()):
         c = _make_app(tmp_path)
         r = c.post("/api/parent/settings/pin",
-                   json={"new_pin": "5678", "confirm_pin": "9999"},
+                   json={"current_pin": "1234", "new_pin": "5678", "confirm_pin": "9999"},
                    headers={"X-Parent-Pin": "1234"})
     assert r.status_code == 400
 
 
-def test_change_pin_wrong_old_pin_rejected(tmp_path):
+def test_change_pin_wrong_current_pin_rejected(tmp_path):
     with patch("medhabhyasah.credentials.keyring", _pin_mock()):
         c = _make_app(tmp_path)
         r = c.post("/api/parent/settings/pin",
-                   json={"new_pin": "5678", "confirm_pin": "5678"},
+                   json={"current_pin": "9999", "new_pin": "5678", "confirm_pin": "5678"},
+                   headers={"X-Parent-Pin": "1234"})
+    assert r.status_code == 400
+
+
+def test_change_pin_wrong_header_pin_rejected(tmp_path):
+    with patch("medhabhyasah.credentials.keyring", _pin_mock()):
+        c = _make_app(tmp_path)
+        r = c.post("/api/parent/settings/pin",
+                   json={"current_pin": "1234", "new_pin": "5678", "confirm_pin": "5678"},
                    headers={"X-Parent-Pin": "wrong"})
     assert r.status_code == 401
 
@@ -202,6 +211,6 @@ def test_change_pin_invalid_format_rejected(tmp_path):
     with patch("medhabhyasah.credentials.keyring", _pin_mock()):
         c = _make_app(tmp_path)
         r = c.post("/api/parent/settings/pin",
-                   json={"new_pin": "abc", "confirm_pin": "abc"},
+                   json={"current_pin": "1234", "new_pin": "abc", "confirm_pin": "abc"},
                    headers={"X-Parent-Pin": "1234"})
     assert r.status_code == 422
