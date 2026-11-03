@@ -303,6 +303,28 @@ def list_approved_questions(
     return [dict(r) for r in conn.execute(sql, params).fetchall()]
 
 
+def list_topics_with_approved(
+    conn: sqlite3.Connection, subject: str | None = None
+) -> list[dict]:
+    """Return generation requests that have at least one approved question, with counts."""
+    sql = """
+        SELECT gr.id AS generation_request_id, gr.subject, gr.topic, gr.grade, gr.exam,
+               COUNT(*) AS total_approved,
+               SUM(CASE WHEN q.difficulty='Easy'   THEN 1 ELSE 0 END) AS easy_count,
+               SUM(CASE WHEN q.difficulty='Medium' THEN 1 ELSE 0 END) AS medium_count,
+               SUM(CASE WHEN q.difficulty='Hard'   THEN 1 ELSE 0 END) AS hard_count
+        FROM questions q
+        JOIN generation_requests gr ON gr.id = q.generation_request_id
+        WHERE q.status = 'approved'
+    """
+    params: list = []
+    if subject is not None:
+        sql += " AND gr.subject = ?"
+        params.append(subject)
+    sql += " GROUP BY gr.id HAVING COUNT(*) > 0 ORDER BY gr.created_at DESC"
+    return [dict(r) for r in conn.execute(sql, params).fetchall()]
+
+
 # ── Attempts ──────────────────────────────────────────────────────────────────
 
 def create_attempt(
@@ -356,6 +378,28 @@ def list_attempts(conn: sqlite3.Connection, student_id: int) -> list[dict]:
         (student_id,),
     ).fetchall()
     return [dict(r) for r in rows]
+
+
+def get_attempt_detail(conn: sqlite3.Connection, attempt_id: int) -> dict | None:
+    row = conn.execute(
+        "SELECT a.id, a.student_id, a.generation_request_id, a.time_limit_seconds, "
+        "a.score, a.grade, a.started_at, a.finished_at, gr.topic, gr.subject "
+        "FROM attempts a JOIN generation_requests gr ON a.generation_request_id = gr.id "
+        "WHERE a.id = ?",
+        (attempt_id,),
+    ).fetchone()
+    if not row:
+        return None
+    result = dict(row)
+    answers = conn.execute(
+        "SELECT aa.question_id, aa.chosen_option, aa.is_correct, "
+        "q.question, q.options, q.answer, q.explanation, q.difficulty "
+        "FROM attempt_answers aa JOIN questions q ON aa.question_id = q.id "
+        "WHERE aa.attempt_id = ? ORDER BY aa.id",
+        (attempt_id,),
+    ).fetchall()
+    result["answers"] = [dict(a) for a in answers]
+    return result
 
 
 def list_wrong_answers(conn: sqlite3.Connection, attempt_id: int) -> list[dict]:

@@ -239,6 +239,38 @@ def test_generation_not_imported_at_api_module_level():
     )
 
 
+def test_generation_not_reachable_via_student_routes():
+    """Calling student attempt endpoints must not trigger a generation import."""
+    import sys
+    import tempfile
+    from pathlib import Path
+    from unittest.mock import MagicMock, patch
+
+    for mod in list(sys.modules.keys()):
+        if "medhabhyasah" in mod:
+            del sys.modules[mod]
+
+    mock_kr = MagicMock()
+    mock_kr.get_password = MagicMock(return_value="1234")
+
+    with patch("medhabhyasah.credentials.keyring", mock_kr):
+        with tempfile.TemporaryDirectory() as td:
+            db_path = Path(td) / "test.db"
+            from medhabhyasah.db import create_schema, get_connection
+            conn = get_connection(db_path)
+            create_schema(conn)
+            conn.close()
+            from medhabhyasah.api import create_app
+            from fastapi.testclient import TestClient
+            c = TestClient(create_app(db_path=db_path))
+            c.get("/api/student/topics")
+            c.get("/api/student/questions")
+
+    assert "medhabhyasah.generation" not in sys.modules, (
+        "medhabhyasah.generation was imported while calling student routes"
+    )
+
+
 # ── Rule 8: API keys never leave generation module ───────────────────────────
 
 def test_gemini_key_not_returned_in_generation_result():

@@ -251,6 +251,45 @@ input:focus, select:focus, textarea:focus {
 .q-undo-btn { padding: 6px 14px; font-size: 13px; color: var(--muted); background: #f5f5f5; border: 1px solid var(--line); border-radius: 6px; cursor: pointer; }
 .q-msg { font-size: 13px; color: #155724; }
 
+/* ── Quiz screens ── */
+.quiz-screen { display: none; }
+.quiz-screen:not(.hide) { display: block; }
+.quiz-shell { max-width: 700px; margin: 0 auto; padding: 24px 16px 48px; }
+.quiz-nav { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+.quiz-nav-title { font-size: 16px; font-weight: 600; }
+.quiz-h2 { font-size: 22px; font-weight: 700; margin: 0 0 20px; }
+.mode-grid { display: flex; gap: 10px; flex-wrap: wrap; }
+.mode-btn { flex: 1; min-width: 120px; padding: 12px 10px; border: 2px solid var(--line); border-radius: 10px; background: #fff; cursor: pointer; display: flex; flex-direction: column; gap: 4px; text-align: center; }
+.mode-btn:hover { border-color: var(--pen); }
+.mode-btn.selected { border-color: var(--pen); background: var(--pen); color: #fff; }
+.mode-name { font-weight: 700; font-size: 15px; }
+.mode-desc { font-size: 12px; opacity: .8; }
+.quiz-timer { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; padding: 4px 12px; border-radius: 20px; background: #fff3cd; color: #856404; }
+.quiz-timer.urgent { background: var(--bad-wash); color: var(--bad); }
+.quiz-qlist { display: flex; flex-direction: column; gap: 20px; margin-bottom: 24px; }
+.q-quiz-card { border: 1.5px solid var(--line); border-radius: 10px; padding: 18px; }
+.q-quiz-num { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px; }
+.q-quiz-text { font-size: 16px; line-height: 1.5; margin-bottom: 14px; font-weight: 500; }
+.omr-options { display: flex; flex-direction: column; gap: 8px; }
+.omr-label { display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 8px 10px; border-radius: 8px; border: 1.5px solid var(--line); transition: background .12s; }
+.omr-label:hover { background: var(--paper); }
+.omr-label:has(input:checked) { border-color: var(--pen); background: var(--pen-wash,#e8f0fe); }
+.omr-circle { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--line); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0; }
+.omr-label:has(input:checked) .omr-circle { border-color: var(--pen); background: var(--pen); color: #fff; }
+.omr-option-text { font-size: 15px; }
+.omr-label input[type=radio] { position: absolute; opacity: 0; width: 0; height: 0; }
+/* Results */
+.results-box { text-align: center; padding: 32px 0 24px; border-bottom: 1px solid var(--line); margin-bottom: 24px; }
+.results-grade { font-size: 72px; font-weight: 800; line-height: 1; color: var(--pen); }
+.results-score { font-size: 28px; font-weight: 700; margin: 8px 0 4px; }
+.results-pct { font-size: 18px; color: var(--muted); }
+.result-row { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.result-icon { font-size: 18px; flex-shrink: 0; width: 24px; text-align: center; }
+.result-body { flex: 1; }
+.result-question { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.result-answer { font-size: 13px; color: var(--muted); }
+.result-explanation { font-size: 13px; color: var(--ink); margin-top: 4px; background: var(--paper); border-radius: 6px; padding: 6px 8px; }
+
 /* ── Dialog / overlay ── */
 .dialog-overlay {
   position: fixed; inset: 0; z-index: 200;
@@ -515,6 +554,82 @@ input:focus, select:focus, textarea:focus {
 </main>
 </div><!-- end appShell -->
 
+<!-- ══ Quiz setup screen ══ -->
+<div id="quizSetup" class="quiz-screen hide">
+  <div class="quiz-shell">
+    <div class="quiz-nav">
+      <button id="setupBackBtn" type="button">&#x2190; Home</button>
+      <span id="setupStudentName" class="quiz-nav-title"></span>
+    </div>
+    <h2 class="quiz-h2">Choose your quiz</h2>
+    <div class="field">
+      <label class="field-label" for="setupSubject">Subject</label>
+      <select id="setupSubject">
+        <option value="">Select subject…</option>
+        <option value="Science">Science</option>
+        <option value="Maths">Maths</option>
+        <option value="Social Studies">Social Studies</option>
+        <option value="English">English</option>
+      </select>
+    </div>
+    <div class="field">
+      <label class="field-label" for="setupTopic">Topic</label>
+      <select id="setupTopic" disabled>
+        <option value="">Select subject first…</option>
+      </select>
+    </div>
+    <div class="field">
+      <label class="field-label">Mode</label>
+      <div class="mode-grid" id="modeGrid">
+        <button class="mode-btn" data-mode="practice" type="button">
+          <span class="mode-name">Practice</span>
+          <span class="mode-desc">Easy questions · No timer</span>
+        </button>
+        <button class="mode-btn" data-mode="challenge" type="button">
+          <span class="mode-name">Challenge</span>
+          <span class="mode-desc">Medium &amp; Hard · 90 s / Q</span>
+        </button>
+        <button class="mode-btn" data-mode="exam" type="button">
+          <span class="mode-name">Exam</span>
+          <span class="mode-desc">All difficulties · 60 s / Q</span>
+        </button>
+      </div>
+    </div>
+    <div class="field">
+      <label class="field-label" for="setupCount">Number of questions</label>
+      <input type="number" id="setupCount" min="1" max="50" value="5">
+      <p id="setupCountHint" class="field-hint"></p>
+    </div>
+    <div class="error-msg" id="setupError" role="alert"></div>
+    <button id="startQuizBtn" type="button">Start quiz</button>
+  </div>
+</div>
+
+<!-- ══ Quiz in-progress screen ══ -->
+<div id="quizInProgress" class="quiz-screen hide">
+  <div class="quiz-shell">
+    <div class="quiz-nav">
+      <span id="quizTopicLabel" class="quiz-nav-title"></span>
+      <div id="quizTimerBox" class="quiz-timer hide"></div>
+    </div>
+    <div id="quizQList" class="quiz-qlist"></div>
+    <div class="error-msg" id="quizError" role="alert"></div>
+    <button id="submitQuizBtn" type="button">Submit quiz</button>
+  </div>
+</div>
+
+<!-- ══ Quiz results screen ══ -->
+<div id="quizResults" class="quiz-screen hide">
+  <div class="quiz-shell">
+    <div class="quiz-nav">
+      <button id="resultsBackBtn" type="button">&#x2190; Home</button>
+      <span class="quiz-nav-title">Results</span>
+    </div>
+    <div class="results-box" id="resultsBox"></div>
+    <div class="results-breakdown" id="resultsBreakdown"></div>
+  </div>
+</div>
+
 <!-- ── PIN dialog ── -->
 <div id="pinDialog" class="dialog-overlay hide" role="dialog" aria-modal="true" aria-label="Enter parent PIN">
   <div class="dialog-card">
@@ -629,11 +744,12 @@ input:focus, select:focus, textarea:focus {
       var students = await fetch("/api/students").then(function(r) { return r.json(); });
       var list = $("profileList");
       if (students.length === 0) return;
-      // Clear empty state
       list.textContent = "";
       students.forEach(function (s) {
         var li = document.createElement("li");
         li.className = "profile-item";
+        li.style.cursor = "pointer";
+        li.title = "Start quiz";
         var name = document.createElement("span");
         name.textContent = s.nickname;
         var meta = document.createElement("span");
@@ -641,6 +757,7 @@ input:focus, select:focus, textarea:focus {
         meta.textContent = "Class " + s.grade + " · " + s.exam;
         li.appendChild(name);
         li.appendChild(meta);
+        li.addEventListener("click", function() { showQuizSetup(s); });
         list.appendChild(li);
       });
     } catch (_) { /* non-fatal */ }
@@ -1162,6 +1279,265 @@ input:focus, select:focus, textarea:focus {
       $("settingsKeyOk").style.display = "block";
       loadCurrentProvider();
     } catch (e) { setError("settingsKeyError", e.message); }
+  });
+
+  // ── Quiz flow ────────────────────────────────────────────────────────────
+  var _quizStudent      = null;
+  var _quizMode         = null;
+  var _quizAttemptId    = null;
+  var _quizQuestions    = [];
+  var _quizTimerIv      = null;
+  var _quizSecsLeft     = 0;
+
+  function showQuizSetup(student) {
+    _quizStudent = student;
+    $("setupStudentName").textContent = student.nickname;
+    $("appShell").style.display = "none";
+    _quizMode = null;
+    $("setupSubject").value = "";
+    var topicSel = $("setupTopic");
+    topicSel.disabled = true;
+    topicSel.textContent = "";
+    var ph = document.createElement("option");
+    ph.value = ""; ph.textContent = "Select subject first…";
+    topicSel.appendChild(ph);
+    $("setupCount").value = 5;
+    $("setupCountHint").textContent = "";
+    clearError("setupError");
+    document.querySelectorAll(".mode-btn").forEach(function(b) { b.classList.remove("selected"); });
+    show($("quizSetup"));
+  }
+
+  function hideQuizSetup() {
+    hide($("quizSetup"));
+    $("appShell").style.display = "";
+  }
+
+  $("setupBackBtn").addEventListener("click", hideQuizSetup);
+
+  $("setupSubject").addEventListener("change", async function () {
+    var subject = this.value;
+    var topicSel = $("setupTopic");
+    topicSel.disabled = true;
+    topicSel.textContent = "";
+    $("setupCountHint").textContent = "";
+    var ph = document.createElement("option");
+    ph.value = "";
+    if (!subject) { ph.textContent = "Select subject first…"; topicSel.appendChild(ph); return; }
+    ph.textContent = "Loading…";
+    topicSel.appendChild(ph);
+    try {
+      var topics = await fetch("/api/student/topics?subject=" + encodeURIComponent(subject)).then(function(r){ return r.json(); });
+      topicSel.textContent = "";
+      if (topics.length === 0) {
+        var nope = document.createElement("option");
+        nope.value = ""; nope.textContent = "No approved questions yet";
+        topicSel.appendChild(nope);
+        return;
+      }
+      var all = document.createElement("option");
+      all.value = ""; all.textContent = "Select topic…";
+      topicSel.appendChild(all);
+      topics.forEach(function(t) {
+        var o = document.createElement("option");
+        o.value = t.generation_request_id;
+        o.textContent = t.topic + " (" + t.total_approved + " q)";
+        o.dataset.easy   = t.easy_count;
+        o.dataset.medium = t.medium_count;
+        o.dataset.hard   = t.hard_count;
+        o.dataset.total  = t.total_approved;
+        topicSel.appendChild(o);
+      });
+      topicSel.disabled = false;
+    } catch(_) {
+      topicSel.textContent = "";
+      var err = document.createElement("option");
+      err.textContent = "Failed to load topics";
+      topicSel.appendChild(err);
+    }
+  });
+
+  $("setupTopic").addEventListener("change", updateCountHint);
+
+  function updateCountHint() {
+    var sel = $("setupTopic");
+    var opt = sel.options[sel.selectedIndex];
+    if (!_quizMode || !opt || !opt.value) { $("setupCountHint").textContent = ""; return; }
+    var avail;
+    if (_quizMode === "practice")        avail = parseInt(opt.dataset.easy, 10) || 0;
+    else if (_quizMode === "challenge")  avail = (parseInt(opt.dataset.medium, 10) || 0) + (parseInt(opt.dataset.hard, 10) || 0);
+    else                                 avail = parseInt(opt.dataset.total, 10) || 0;
+    $("setupCountHint").textContent = avail + " questions available for this mode.";
+  }
+
+  document.querySelectorAll(".mode-btn").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      document.querySelectorAll(".mode-btn").forEach(function(b) { b.classList.remove("selected"); });
+      btn.classList.add("selected");
+      _quizMode = btn.dataset.mode;
+      updateCountHint();
+    });
+  });
+
+  $("startQuizBtn").addEventListener("click", async function() {
+    clearError("setupError");
+    var subject  = $("setupSubject").value;
+    var topicSel = $("setupTopic");
+    var reqId    = topicSel.value ? parseInt(topicSel.value, 10) : null;
+    var count    = parseInt($("setupCount").value, 10);
+    if (!subject)  { setError("setupError", "Select a subject."); return; }
+    if (!reqId)    { setError("setupError", "Select a topic."); return; }
+    if (!_quizMode){ setError("setupError", "Choose a mode."); return; }
+    if (!count || count < 1 || count > 50) { setError("setupError", "Enter 1–50 questions."); return; }
+    try {
+      var data = await post("/api/student/attempts", {
+        student_id: _quizStudent.id,
+        generation_request_id: reqId,
+        mode: _quizMode,
+        question_count: count,
+      });
+      _quizAttemptId = data.attempt_id;
+      _quizQuestions = data.questions;
+      hide($("quizSetup"));
+      renderQuizScreen(data, topicSel.options[topicSel.selectedIndex]);
+    } catch(e) { setError("setupError", e.message); }
+  });
+
+  function renderQuizScreen(data, topicOpt) {
+    var topicLabel = topicOpt && topicOpt.value ? topicOpt.textContent : "";
+    $("quizTopicLabel").textContent = topicLabel;
+    var list = $("quizQList");
+    list.textContent = "";
+    var letters = ["A","B","C","D"];
+    _quizQuestions.forEach(function(q, qi) {
+      var card = document.createElement("div");
+      card.className = "q-quiz-card";
+      var num = document.createElement("div");
+      num.className = "q-quiz-num";
+      num.textContent = "Q" + (qi + 1) + " · " + q.difficulty;
+      card.appendChild(num);
+      var qText = document.createElement("div");
+      qText.className = "q-quiz-text";
+      qText.textContent = q.question;
+      card.appendChild(qText);
+      var omr = document.createElement("div");
+      omr.className = "omr-options";
+      (q.options || []).forEach(function(opt, oi) {
+        var lbl = document.createElement("label");
+        lbl.className = "omr-label";
+        var inp = document.createElement("input");
+        inp.type = "radio"; inp.name = "q_" + q.id; inp.value = oi;
+        var circle = document.createElement("span");
+        circle.className = "omr-circle";
+        circle.textContent = letters[oi];
+        var optText = document.createElement("span");
+        optText.className = "omr-option-text";
+        optText.textContent = opt;
+        lbl.appendChild(inp);
+        lbl.appendChild(circle);
+        lbl.appendChild(optText);
+        omr.appendChild(lbl);
+      });
+      card.appendChild(omr);
+      list.appendChild(card);
+    });
+    clearError("quizError");
+    var tb = $("quizTimerBox");
+    if (data.time_limit_seconds) {
+      _quizSecsLeft = data.time_limit_seconds;
+      tb.textContent = _formatTime(_quizSecsLeft);
+      tb.classList.remove("urgent");
+      show(tb);
+      _quizTimerIv = setInterval(function() {
+        _quizSecsLeft--;
+        tb.textContent = _formatTime(_quizSecsLeft);
+        if (_quizSecsLeft <= 30) tb.classList.add("urgent");
+        if (_quizSecsLeft <= 0) { clearInterval(_quizTimerIv); _quizTimerIv = null; _submitQuiz(true); }
+      }, 1000);
+    } else {
+      hide(tb);
+    }
+    show($("quizInProgress"));
+  }
+
+  function _formatTime(s) {
+    var m = Math.floor(Math.max(0, s) / 60);
+    var r = Math.max(0, s) % 60;
+    return (m < 10 ? "0" : "") + m + ":" + (r < 10 ? "0" : "") + r;
+  }
+
+  $("submitQuizBtn").addEventListener("click", function() { _submitQuiz(false); });
+
+  async function _submitQuiz(auto) {
+    if (_quizTimerIv) { clearInterval(_quizTimerIv); _quizTimerIv = null; }
+    var answers = _quizQuestions.map(function(q) {
+      var chk = document.querySelector("input[name='q_" + q.id + "']:checked");
+      return { question_id: q.id, chosen_option: chk ? parseInt(chk.value, 10) : null };
+    });
+    var unanswered = answers.filter(function(a) { return a.chosen_option === null; }).length;
+    if (!auto && unanswered > 0) {
+      if (!confirm(unanswered + " question(s) unanswered. Submit anyway?")) return;
+    }
+    try {
+      var result = await post("/api/student/attempts/" + _quizAttemptId + "/submit", { answers: answers });
+      hide($("quizInProgress"));
+      _showResults(result);
+    } catch(e) { setError("quizError", "Submit failed: " + e.message); }
+  }
+
+  function _showResults(result) {
+    var box = $("resultsBox");
+    box.textContent = "";
+    var gEl = document.createElement("div"); gEl.className = "results-grade"; gEl.textContent = result.grade; box.appendChild(gEl);
+    var sEl = document.createElement("div"); sEl.className = "results-score"; sEl.textContent = result.score + " / " + result.total; box.appendChild(sEl);
+    var pEl = document.createElement("div"); pEl.className = "results-pct";   pEl.textContent = result.pct + "%"; box.appendChild(pEl);
+    var bd = $("resultsBreakdown");
+    bd.textContent = "";
+    var letters = ["A","B","C","D"];
+    (result.breakdown || []).forEach(function(item) {
+      var row = document.createElement("div");
+      row.className = "result-row";
+      var icon = document.createElement("div");
+      icon.className = "result-icon";
+      var skipped = item.chosen_option === null;
+      icon.textContent = item.is_correct ? "✓" : skipped ? "—" : "✗";
+      var body = document.createElement("div");
+      body.className = "result-body";
+      var qEl = document.createElement("div");
+      qEl.className = "result-question";
+      qEl.textContent = item.question;
+      var ansEl = document.createElement("div");
+      ansEl.className = "result-answer";
+      var ca = item.correct_answer;
+      var caLetter = letters[ca] !== undefined ? letters[ca] : "?";
+      var caText   = item.options[ca] !== undefined ? item.options[ca] : "";
+      if (skipped) {
+        ansEl.textContent = "Skipped · Correct: " + caLetter + ". " + caText;
+      } else if (item.is_correct) {
+        ansEl.textContent = "Correct: " + caLetter;
+      } else {
+        var chLetter = item.chosen_option !== null && letters[item.chosen_option] ? letters[item.chosen_option] : "?";
+        ansEl.textContent = "Your answer: " + chLetter + " · Correct: " + caLetter;
+      }
+      body.appendChild(qEl);
+      body.appendChild(ansEl);
+      if (!item.is_correct && item.explanation) {
+        var expEl = document.createElement("div");
+        expEl.className = "result-explanation";
+        expEl.textContent = item.explanation;
+        body.appendChild(expEl);
+      }
+      row.appendChild(icon);
+      row.appendChild(body);
+      bd.appendChild(row);
+    });
+    show($("quizResults"));
+  }
+
+  $("resultsBackBtn").addEventListener("click", function() {
+    hide($("quizResults"));
+    $("appShell").style.display = "";
+    loadStudents();
   });
 
   // ── bootstrap ────────────────────────────────────────────────────────────

@@ -12,18 +12,24 @@ from pydantic import BaseModel, field_validator
 from medhabhyasah import credentials
 from medhabhyasah.db import (
     count_students,
+    create_attempt,
+    create_attempt_answer,
     create_generation_request,
     create_question,
     create_schema,
     create_student,
     delete_generation_request,
+    finish_attempt,
+    get_attempt_detail,
     get_connection,
     get_generation_request,
     get_question,
     list_approved_questions,
+    list_attempts,
     list_generation_requests,
     list_questions,
     list_students,
+    list_topics_with_approved,
     update_generation_request_status,
     update_question,
 )
@@ -73,6 +79,48 @@ class StudentRequest(BaseModel):
         if not v.strip():
             raise ValueError("Field must not be blank")
         return v.strip()
+
+
+_MODE_SECONDS_PER_Q: dict[str, int | None] = {
+    "practice": None,
+    "challenge": 90,
+    "exam": 60,
+}
+_MODE_DIFFICULTIES: dict[str, set[str]] = {
+    "practice": {"Easy"},
+    "challenge": {"Medium", "Hard"},
+    "exam": {"Easy", "Medium", "Hard"},
+}
+
+
+class StartAttemptRequest(BaseModel):
+    student_id: int
+    generation_request_id: int
+    mode: str
+    question_count: int
+
+    @field_validator("mode")
+    @classmethod
+    def valid_mode(cls, v: str) -> str:
+        if v not in _MODE_SECONDS_PER_Q:
+            raise ValueError("mode must be practice, challenge, or exam")
+        return v
+
+    @field_validator("question_count")
+    @classmethod
+    def valid_count(cls, v: int) -> int:
+        if not (1 <= v <= 50):
+            raise ValueError("question_count must be 1–50")
+        return v
+
+
+class SubmitAnswerItem(BaseModel):
+    question_id: int
+    chosen_option: int | None = None
+
+
+class SubmitAttemptRequest(BaseModel):
+    answers: list[SubmitAnswerItem]
 
 
 class QuestionUpdateRequest(BaseModel):
@@ -309,6 +357,123 @@ def create_app(db_path: Path | None = None) -> FastAPI:
         conn.close()
         for row in rows:
             _parse_options(row)
+        return rows
+
+    @app.get("/api/student/topics")
+    async def get_student_topics(subject: str | None = None) -> list:
+        conn = _conn()
+        rows = list_topics_with_approved(conn, subject=subject)
+        conn.close()
+        return rows
+
+    @app.post("/api/student/attempts")
+    async def start_attempt(body: StartAttemptRequest) -> dict:
+        import random
+        conn = _conn()
+        pool = list_approved_questions(conn, generation_request_id=body.generation_request_id)
+        conn.close()
+
+        allowed = _MODE_DIFFICULTIES[body.mode]
+        filtered = [q for q in pool if q.get("difficulty") in allowed]
+        if len(filtered) < body.question_count:
+            raise HTTPException(400, f"Only {len(filtered)} questions available for this mode")
+
+        random.shuffle(filtered)
+        selected = filtered[: body.question_count]
+
+        secs_per_q = _MODE_SECONDS_PER_Q[body.mode]
+        time_limit = None if secs_per_q is None else secs_per_q * body.question_count
+
+        conn = _conn()
+        attempt_id = create_attempt(
+            conn,
+            student_id=body.student_id,
+            generation_request_id=body.generation_request_id,
+            time_limit_seconds=time_limit,
+        )
+        conn.close()
+
+        quiz_questions = []
+        for q in selected:
+            _parse_options(q)
+            quiz_questions.append({
+                "id": q["id"],
+                "question": q["question"],
+                "options": q["options"],
+                "difficulty": q["difficulty"],
+            })
+
+        return {
+            "attempt_id": attempt_id,
+            "time_limit_seconds": time_limit,
+            "questions": quiz_questions,
+        }
+
+    @app.post("/api/student/attempts/{attempt_id}/submit")
+    async def submit_attempt(
+        attempt_id: int, body: SubmitAttemptRequest
+    ) -> dict:
+        conn = _conn()
+        detail = get_attempt_detail(conn, attempt_id)
+        conn.close()
+        if detail is None:
+            raise HTTPException(404, "Attempt not found")
+        if detail["finished_at"] is not None:
+            raise HTTPException(400, "Attempt already submitted")
+
+        score = 0
+        breakdown = []
+        conn = _conn()
+        for item in body.answers:
+            q = get_question(conn, item.question_id)
+            if q is None:
+                continue
+            correct_answer = str(q["answer"])
+            is_correct = (
+                item.chosen_option is not None
+                and str(item.chosen_option) == correct_answer
+            )
+            if is_correct:
+                score += 1
+            create_attempt_answer(
+                conn,
+                attempt_id=attempt_id,
+                question_id=item.question_id,
+                chosen_option=item.chosen_option,
+                is_correct=is_correct,
+            )
+            _parse_options(q)
+            breakdown.append({
+                "question_id": item.question_id,
+                "question": q["question"],
+                "options": q["options"],
+                "chosen_option": item.chosen_option,
+                "correct_answer": int(correct_answer) if correct_answer.isdigit() else correct_answer,
+                "explanation": q["explanation"],
+                "is_correct": is_correct,
+                "difficulty": q["difficulty"],
+            })
+
+        total = len(body.answers)
+        pct = (score / total * 100) if total > 0 else 0
+        grade = "A" if pct >= 80 else "B" if pct >= 60 else "C" if pct >= 40 else "D"
+        finish_attempt(conn, attempt_id, score=score, grade=grade)
+        conn.close()
+
+        return {
+            "attempt_id": attempt_id,
+            "score": score,
+            "total": total,
+            "grade": grade,
+            "pct": round(pct, 1),
+            "breakdown": breakdown,
+        }
+
+    @app.get("/api/student/attempts")
+    async def get_student_attempts(student_id: int) -> list:
+        conn = _conn()
+        rows = list_attempts(conn, student_id=student_id)
+        conn.close()
         return rows
 
     # ── Parent: generation requests ───────────────────────────────────────────
