@@ -16,6 +16,7 @@ from medhabhyasah.db import (
     create_question,
     create_schema,
     create_student,
+    delete_generation_request,
     get_connection,
     get_generation_request,
     list_generation_requests,
@@ -206,6 +207,22 @@ def create_app(db_path: Path | None = None) -> FastAPI:
         if req is None:
             raise HTTPException(404, "Not found")
         return req
+
+    @app.delete("/api/parent/generation-requests/{req_id}")
+    async def delete_generation_request_route(
+        req_id: int, pin: str = Depends(_require_pin)
+    ) -> dict:
+        conn = _conn()
+        req = get_generation_request(conn, req_id)
+        conn.close()
+        if req is None:
+            raise HTTPException(404, "Generation request not found")
+        if req["status"] not in ("pending", "failed"):
+            raise HTTPException(400, f"Cannot delete a request with status '{req['status']}'")
+        conn = _conn()
+        delete_generation_request(conn, req_id)
+        conn.close()
+        return {"ok": True}
 
     @app.post("/api/parent/generation-requests")
     async def post_generation_request(

@@ -193,6 +193,12 @@ def update_generation_request_status(
     conn.commit()
 
 
+def delete_generation_request(conn: sqlite3.Connection, req_id: int) -> None:
+    conn.execute("DELETE FROM questions WHERE generation_request_id = ?", (req_id,))
+    conn.execute("DELETE FROM generation_requests WHERE id = ?", (req_id,))
+    conn.commit()
+
+
 # ── Questions ─────────────────────────────────────────────────────────────────
 
 def create_question(
