@@ -33,6 +33,36 @@ def test_question_text_rendered_with_textContent_or_value():
     assert ".textContent" in src, "Expected .textContent usage not found in index.html"
 
 
+def test_results_screen_does_not_reveal_correct_answer():
+    """The quiz results breakdown must never expose the correct answer letter or text.
+
+    Students must not be able to skip all questions, view the results screen,
+    and learn the correct answers before retaking the quiz.
+    """
+    src = _html_source()
+
+    # Locate the _showResults function body
+    match = re.search(r'function _showResults\(result\)(.*?)^\s{2}\}', src, re.DOTALL | re.MULTILINE)
+    assert match, "_showResults function not found in index.html"
+    fn_body = match.group(1)
+
+    # Must not output caLetter (correct answer letter) to the user
+    assert "caLetter" not in fn_body, (
+        "results screen exposes correct answer letter (caLetter); "
+        "remove it so students cannot game the quiz by skipping all questions"
+    )
+    # Must not output caText (correct answer option text) to the user
+    assert "caText" not in fn_body, (
+        "results screen exposes correct answer option text (caText); "
+        "correct answers must only be visible in the Mistakes Notebook"
+    )
+    # Must not show explanation on the results screen (explanation can reveal the answer)
+    assert "result-explanation" not in fn_body, (
+        "results screen shows the explanation, which can reveal the correct answer; "
+        "explanations must only appear in the Mistakes Notebook"
+    )
+
+
 def test_no_html_allowed_in_question_api_fields():
     """The API question fields (question, options, explanation) must not contain HTML tags."""
     import json
