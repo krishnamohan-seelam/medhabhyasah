@@ -443,6 +443,24 @@ input:focus, select:focus, textarea:focus {
       <!-- Past requests list -->
       <div id="requestList" class="request-list"></div>
 
+      <!-- Settings -->
+      <details id="parentSettingsDetails" style="margin-top:24px">
+        <summary class="gen-summary">&#x2699;&#xFE0F; Settings</summary>
+        <div class="gen-form" id="settingsForm">
+          <p style="font-size:13px;color:var(--muted);margin:0 0 12px">
+            Current AI provider: <strong id="currentProvider">loading…</strong>
+          </p>
+          <div class="field">
+            <label class="field-label" for="settingsApiKey">Replace API key</label>
+            <input type="password" id="settingsApiKey" autocomplete="off" placeholder="sk-ant-… or AIza…">
+            <p class="field-hint">Anthropic key starts with <code>sk-ant-</code> · Gemini key starts with <code>AIza</code></p>
+          </div>
+          <div class="error-msg" id="settingsKeyError" role="alert"></div>
+          <div id="settingsKeyOk" style="display:none;font-size:13px;color:#2e7d32;margin-bottom:8px"></div>
+          <button id="settingsSaveKeyBtn" type="button">Save key</button>
+        </div>
+      </details>
+
     </div><!-- end parentDashboard -->
   </section>
 
@@ -619,6 +637,7 @@ input:focus, select:focus, textarea:focus {
     hide($("parentLocked"));
     show($("parentDashboard"));
     loadGenerationRequests();
+    loadCurrentProvider();
   }
 
   // ── Generation request list ───────────────────────────────────────────────
@@ -765,6 +784,40 @@ input:focus, select:focus, textarea:focus {
     } catch (e) {
       setError("genError", e.message);
     }
+  });
+
+  // ── Settings panel ───────────────────────────────────────────────────────
+  async function loadCurrentProvider() {
+    try {
+      var data = await fetch("/api/setup/status").then(function (r) { return r.json(); });
+      var label = data.configured_provider === "anthropic" ? "Anthropic"
+                : data.configured_provider === "gemini"    ? "Google Gemini"
+                : "None";
+      $("currentProvider").textContent = label;
+    } catch (_) { $("currentProvider").textContent = "unknown"; }
+  }
+
+  $("settingsSaveKeyBtn").addEventListener("click", async function () {
+    clearError("settingsKeyError");
+    $("settingsKeyOk").style.display = "none";
+    var key = $("settingsApiKey").value.trim();
+    if (!key) { setError("settingsKeyError", "Paste your API key."); return; }
+    try {
+      var r = await fetch("/api/parent/settings/apikey", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Parent-Pin": _parentPin },
+        body: JSON.stringify({ api_key: key }),
+      });
+      if (!r.ok) {
+        var err = await r.json().catch(function () { return {}; });
+        throw new Error(err.detail || "Failed to save key");
+      }
+      var result = await r.json();
+      $("settingsApiKey").value = "";
+      $("settingsKeyOk").textContent = "Saved. Provider: " + (result.provider === "anthropic" ? "Anthropic" : "Google Gemini");
+      $("settingsKeyOk").style.display = "block";
+      loadCurrentProvider();
+    } catch (e) { setError("settingsKeyError", e.message); }
   });
 
   // ── bootstrap ────────────────────────────────────────────────────────────

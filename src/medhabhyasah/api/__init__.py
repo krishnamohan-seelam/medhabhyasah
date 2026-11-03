@@ -174,6 +174,19 @@ def create_app(db_path: Path | None = None) -> FastAPI:
             raise HTTPException(status_code=401, detail="Incorrect PIN")
         return {"ok": True}
 
+    # ── Parent: settings ─────────────────────────────────────────────────────
+
+    @app.post("/api/parent/settings/apikey")
+    async def update_apikey(
+        body: ApiKeyRequest, pin: str = Depends(_require_pin)
+    ) -> dict:
+        key = body.api_key
+        if key.startswith("sk-ant-"):
+            credentials.store_api_key(key)
+        else:
+            credentials.store_gemini_key(key)
+        return {"ok": True, "provider": "anthropic" if key.startswith("sk-ant-") else "gemini"}
+
     # ── Parent: generation requests ───────────────────────────────────────────
 
     @app.get("/api/parent/generation-requests")
