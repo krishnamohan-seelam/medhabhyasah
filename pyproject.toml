@@ -1,0 +1,33 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "medhabhyasah"
+version = "0.1.0"
+description = "Exam practice from parent-approved questions"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "Krishna Mohan Seelam" }]
+dependencies = [
+    "anthropic",
+    "fastapi",
+    "keyring",
+    "pydantic>=2",
+    "pywebview",
+    "uvicorn",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "httpx"]
+package = ["pyinstaller"]
+
+[project.scripts]
+medhabhyasah = "medhabhyasah.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/medhabhyasah"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

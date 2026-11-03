@@ -1,0 +1,30 @@
+# Internal documents and scratch work: never committed
+/design/
+/docs/
+/.scratch/
+
+# Local data: never commit source books, databases or secrets
+/data/sources/
+*.db
+*.sqlite3
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Packaging output
+build/
+dist/
+*.spec
+
+# Editors and OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
