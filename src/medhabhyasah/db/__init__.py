@@ -402,6 +402,47 @@ def get_attempt_detail(conn: sqlite3.Connection, attempt_id: int) -> dict | None
     return result
 
 
+def has_attempts(conn: sqlite3.Connection, student_id: int) -> bool:
+    count = conn.execute(
+        "SELECT COUNT(*) FROM attempts WHERE student_id = ?", (student_id,)
+    ).fetchone()[0]
+    return count > 0
+
+
+def list_all_wrong_answers(conn: sqlite3.Connection, student_id: int) -> list[dict]:
+    """All questions this student has ever answered incorrectly, deduplicated by question."""
+    sql = """
+        SELECT q.id AS question_id, q.question, q.options, q.answer, q.explanation,
+               q.difficulty, gr.subject, gr.topic
+        FROM attempt_answers aa
+        JOIN attempts a ON a.id = aa.attempt_id
+        JOIN questions q ON q.id = aa.question_id
+        JOIN generation_requests gr ON gr.id = q.generation_request_id
+        WHERE a.student_id = ? AND aa.is_correct = 0
+        GROUP BY q.id
+        ORDER BY gr.topic, q.difficulty
+    """
+    return [dict(r) for r in conn.execute(sql, (student_id,)).fetchall()]
+
+
+def weak_area_summary(conn: sqlite3.Connection, student_id: int) -> list[dict]:
+    """Per topic+difficulty: answer counts and accuracy %, ascending by accuracy."""
+    sql = """
+        SELECT gr.subject, gr.topic, q.difficulty,
+               COUNT(*) AS total_answers,
+               SUM(aa.is_correct) AS correct_answers,
+               ROUND(100.0 * SUM(aa.is_correct) / COUNT(*), 1) AS accuracy_pct
+        FROM attempt_answers aa
+        JOIN attempts a ON a.id = aa.attempt_id
+        JOIN questions q ON q.id = aa.question_id
+        JOIN generation_requests gr ON gr.id = q.generation_request_id
+        WHERE a.student_id = ?
+        GROUP BY gr.subject, gr.topic, q.difficulty
+        ORDER BY accuracy_pct ASC
+    """
+    return [dict(r) for r in conn.execute(sql, (student_id,)).fetchall()]
+
+
 def list_wrong_answers(conn: sqlite3.Connection, attempt_id: int) -> list[dict]:
     rows = conn.execute(
         "SELECT aa.question_id, aa.chosen_option, q.question, q.options, "

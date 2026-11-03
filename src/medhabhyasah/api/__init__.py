@@ -19,11 +19,14 @@ from medhabhyasah.db import (
     create_schema,
     create_student,
     delete_generation_request,
+    delete_student,
     finish_attempt,
     get_attempt_detail,
     get_connection,
     get_generation_request,
     get_question,
+    has_attempts,
+    list_all_wrong_answers,
     list_approved_questions,
     list_attempts,
     list_generation_requests,
@@ -32,6 +35,8 @@ from medhabhyasah.db import (
     list_topics_with_approved,
     update_generation_request_status,
     update_question,
+    update_student,
+    weak_area_summary,
 )
 
 # Ensure correct MIME type for woff2 fonts (not always registered on Windows)
@@ -141,6 +146,23 @@ class QuestionUpdateRequest(BaseModel):
     def valid_answer(cls, v: int | None) -> int | None:
         if v is not None and v not in (0, 1, 2, 3):
             raise ValueError("answer must be 0, 1, 2, or 3")
+        return v
+
+
+class PracticeMistakesRequest(BaseModel):
+    student_id: int
+    attempt_id: int
+
+
+class ChangePinRequest(BaseModel):
+    new_pin: str
+    confirm_pin: str
+
+    @field_validator("new_pin", "confirm_pin")
+    @classmethod
+    def pin_digits(cls, v: str) -> str:
+        if not v.isdigit() or not (4 <= len(v) <= 8):
+            raise ValueError("PIN must be 4–8 digits")
         return v
 
 
@@ -475,6 +497,100 @@ def create_app(db_path: Path | None = None) -> FastAPI:
         rows = list_attempts(conn, student_id=student_id)
         conn.close()
         return rows
+
+    @app.get("/api/student/mistakes")
+    async def get_student_mistakes(student_id: int) -> list:
+        conn = _conn()
+        rows = list_all_wrong_answers(conn, student_id)
+        conn.close()
+        for r in rows:
+            _parse_options(r)
+        return rows
+
+    @app.post("/api/student/practice-mistakes")
+    async def create_practice_mistakes(body: PracticeMistakesRequest) -> dict:
+        conn = _conn()
+        detail = get_attempt_detail(conn, body.attempt_id)
+        if detail is None:
+            conn.close()
+            raise HTTPException(404, "Attempt not found")
+        if detail["student_id"] != body.student_id:
+            conn.close()
+            raise HTTPException(403, "Not your attempt")
+        wrong = [a for a in detail["answers"] if not a["is_correct"]]
+        if not wrong:
+            conn.close()
+            raise HTTPException(400, "No wrong answers in this attempt")
+        attempt_id = create_attempt(
+            conn,
+            student_id=body.student_id,
+            generation_request_id=detail["generation_request_id"],
+            time_limit_seconds=None,
+        )
+        conn.close()
+        questions = []
+        for a in wrong:
+            q = dict(a)
+            _parse_options(q)
+            questions.append({
+                "id": q["question_id"],
+                "question": q["question"],
+                "options": q["options"],
+                "difficulty": q["difficulty"],
+            })
+        return {"attempt_id": attempt_id, "time_limit_seconds": None, "questions": questions}
+
+    # ── Parent: student oversight (issue 07) ──────────────────────────────────
+
+    @app.get("/api/parent/weak-areas")
+    async def get_weak_areas(student_id: int, pin: str = Depends(_require_pin)) -> list:
+        conn = _conn()
+        rows = weak_area_summary(conn, student_id)
+        conn.close()
+        return rows
+
+    # ── Parent: student profile management (issue 08) ─────────────────────────
+
+    @app.post("/api/parent/students")
+    async def add_student_parent(
+        body: StudentRequest, pin: str = Depends(_require_pin)
+    ) -> dict:
+        conn = _conn()
+        sid = create_student(conn, body.nickname, body.grade, body.exam)
+        conn.close()
+        return {"id": sid, "nickname": body.nickname, "grade": body.grade, "exam": body.exam}
+
+    @app.patch("/api/parent/students/{student_id}")
+    async def edit_student_parent(
+        student_id: int, body: StudentRequest, pin: str = Depends(_require_pin)
+    ) -> dict:
+        conn = _conn()
+        update_student(conn, student_id, body.nickname, body.grade, body.exam)
+        conn.close()
+        return {"id": student_id, "nickname": body.nickname, "grade": body.grade, "exam": body.exam}
+
+    @app.delete("/api/parent/students/{student_id}")
+    async def delete_student_parent(
+        student_id: int, force: bool = False, pin: str = Depends(_require_pin)
+    ) -> dict:
+        conn = _conn()
+        if has_attempts(conn, student_id) and not force:
+            conn.close()
+            raise HTTPException(
+                409, "Student has attempt history. Pass ?force=true to confirm deletion."
+            )
+        delete_student(conn, student_id)
+        conn.close()
+        return {"deleted": student_id}
+
+    @app.post("/api/parent/settings/pin")
+    async def change_pin(
+        body: ChangePinRequest, pin: str = Depends(_require_pin)
+    ) -> dict:
+        if body.new_pin != body.confirm_pin:
+            raise HTTPException(400, "PINs do not match")
+        credentials.store_pin(body.new_pin)
+        return {"ok": True}
 
     # ── Parent: generation requests ───────────────────────────────────────────
 

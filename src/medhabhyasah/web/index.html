@@ -290,6 +290,56 @@ input:focus, select:focus, textarea:focus {
 .result-answer { font-size: 13px; color: var(--muted); }
 .result-explanation { font-size: 13px; color: var(--ink); margin-top: 4px; background: var(--paper); border-radius: 6px; padding: 6px 8px; }
 
+/* ── Student home & progress ── */
+.student-actions { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
+.student-action-btn { display: flex; align-items: center; gap: 16px; padding: 18px 20px; border: 1.5px solid var(--line); border-radius: 12px; background: #fff; cursor: pointer; text-align: left; width: 100%; }
+.student-action-btn:hover { border-color: var(--pen); background: var(--pen-wash,#e8f0fe); }
+.sa-icon { font-size: 22px; flex-shrink: 0; width: 30px; text-align: center; }
+.sa-title { font-size: 16px; font-weight: 700; display: block; }
+.sa-desc { font-size: 13px; color: var(--muted); display: block; margin-top: 2px; }
+.attempt-list { display: flex; flex-direction: column; gap: 10px; }
+.attempt-row { border: 1.5px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+.attempt-row-header { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; }
+.attempt-topic { font-weight: 600; font-size: 15px; flex: 1; }
+.attempt-grade { font-size: 22px; font-weight: 800; color: var(--pen); width: 28px; }
+.attempt-meta { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+.btn-practise { font-size: 13px; padding: 5px 12px; background: var(--paper); border: 1.5px solid var(--line); border-radius: 6px; cursor: pointer; }
+.btn-practise:hover { border-color: var(--pen); }
+/* Mistakes notebook */
+.mistake-group-title { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin: 20px 0 8px; }
+.mistake-card { border: 1.5px solid #fde8e8; border-radius: 10px; padding: 14px; margin-bottom: 10px; background: #fff; }
+.mistake-question { font-size: 15px; font-weight: 500; margin-bottom: 10px; }
+.mistake-correct { font-size: 13px; background: #eaf6ee; border-radius: 6px; padding: 7px 10px; margin-bottom: 6px; font-weight: 600; }
+.mistake-explanation { font-size: 13px; padding: 4px 2px; color: var(--muted); }
+/* Parent oversight */
+.oversight-section { margin-top: 20px; }
+.oversight-student { border: 1.5px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; cursor: pointer; }
+.oversight-student:hover { border-color: var(--pen); }
+.oversight-name { font-size: 15px; font-weight: 700; }
+.oversight-smeta { font-size: 13px; color: var(--muted); }
+.oversight-body { margin-top: 14px; display: none; }
+.oversight-student.os-expanded .oversight-body { display: block; }
+.oversight-attempts { margin-bottom: 14px; }
+.oversight-attempt-row { display: flex; gap: 8px; align-items: center; font-size: 14px; padding: 5px 0; border-bottom: 1px solid var(--line); }
+.oversight-attempt-topic { flex: 1; }
+.oversight-attempt-grade { font-weight: 700; width: 22px; color: var(--pen); }
+.oversight-attempt-date { color: var(--muted); font-size: 12px; }
+.weak-area-h { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin: 12px 0 6px; }
+.weak-row { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 4px 0; }
+.weak-label { flex: 0 0 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.weak-bar-outer { flex: 1; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.weak-bar-inner { height: 100%; border-radius: 3px; background: var(--pen); }
+.weak-pct { font-weight: 600; width: 38px; text-align: right; font-size: 12px; }
+/* Profile management in settings */
+.profile-manage-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.profile-manage-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1.5px solid var(--line); border-radius: 8px; }
+.profile-manage-name { flex: 1; font-size: 14px; font-weight: 600; }
+.profile-manage-meta { font-size: 12px; color: var(--muted); }
+.btn-sm { font-size: 12px; padding: 4px 10px; border: 1.5px solid var(--line); border-radius: 5px; cursor: pointer; background: #fff; }
+.btn-sm:hover { border-color: var(--pen); }
+.btn-sm-danger { border-color: var(--bad,#e53e3e); color: var(--bad,#e53e3e); }
+.btn-sm-danger:hover { background: #fde8e8; }
+
 /* ── Dialog / overlay ── */
 .dialog-overlay {
   position: fixed; inset: 0; z-index: 200;
@@ -519,8 +569,16 @@ input:focus, select:focus, textarea:focus {
       <!-- Past requests list -->
       <div id="requestList" class="request-list"></div>
 
+      <!-- Student Oversight -->
+      <details id="parentOverviewDetails" style="margin-top:24px">
+        <summary class="gen-summary">&#x1F4CA; Student Oversight</summary>
+        <div class="gen-form">
+          <div id="oversightList" class="oversight-section"></div>
+        </div>
+      </details>
+
       <!-- Settings -->
-      <details id="parentSettingsDetails" style="margin-top:24px">
+      <details id="parentSettingsDetails" style="margin-top:12px">
         <summary class="gen-summary">&#x2699;&#xFE0F; Settings</summary>
         <div class="gen-form" id="settingsForm">
           <p style="font-size:13px;color:var(--muted);margin:0 0 12px">
@@ -534,6 +592,41 @@ input:focus, select:focus, textarea:focus {
           <div class="error-msg" id="settingsKeyError" role="alert"></div>
           <div id="settingsKeyOk" style="display:none;font-size:13px;color:#2e7d32;margin-bottom:8px"></div>
           <button id="settingsSaveKeyBtn" type="button">Save key</button>
+
+          <hr style="margin:20px 0;border:none;border-top:1px solid var(--line)">
+
+          <!-- Student profile management -->
+          <p class="field-label" style="margin-bottom:8px">Student profiles</p>
+          <div id="profileManageList" class="profile-manage-list"></div>
+          <details id="addStudentDetails" style="margin-top:4px">
+            <summary style="font-size:13px;cursor:pointer;color:var(--pen)">+ Add student</summary>
+            <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">
+              <input type="text" id="newNickname" placeholder="Nickname" style="font-size:14px;padding:6px 10px;border:1.5px solid var(--line);border-radius:6px">
+              <select id="newGrade" style="font-size:14px;padding:6px 10px;border:1.5px solid var(--line);border-radius:6px">
+                <option value="">Class…</option>
+                <option>5</option><option>6</option><option>7</option><option>8</option>
+                <option>9</option><option>10</option><option>11</option><option>12</option>
+              </select>
+              <select id="newExam" style="font-size:14px;padding:6px 10px;border:1.5px solid var(--line);border-radius:6px">
+                <option value="">Board…</option>
+                <option>CBSE</option><option>ICSE</option><option>State</option>
+              </select>
+              <div class="error-msg" id="addStudentError" role="alert"></div>
+              <button id="addStudentBtn" type="button" style="align-self:flex-start">Add</button>
+            </div>
+          </details>
+
+          <hr style="margin:20px 0;border:none;border-top:1px solid var(--line)">
+
+          <!-- PIN change -->
+          <p class="field-label" style="margin-bottom:8px">Change PIN</p>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <input type="password" id="newPin1" placeholder="New PIN (4–8 digits)" inputmode="numeric" maxlength="8" style="font-size:14px;padding:6px 10px;border:1.5px solid var(--line);border-radius:6px">
+            <input type="password" id="newPin2" placeholder="Confirm new PIN" inputmode="numeric" maxlength="8" style="font-size:14px;padding:6px 10px;border:1.5px solid var(--line);border-radius:6px">
+            <div class="error-msg" id="pinChangeError" role="alert"></div>
+            <div id="pinChangeOk" style="display:none;font-size:13px;color:#2e7d32"></div>
+            <button id="changePinBtn" type="button" style="align-self:flex-start">Change PIN</button>
+          </div>
         </div>
       </details>
 
@@ -627,6 +720,52 @@ input:focus, select:focus, textarea:focus {
     </div>
     <div class="results-box" id="resultsBox"></div>
     <div class="results-breakdown" id="resultsBreakdown"></div>
+  </div>
+</div>
+
+<!-- ══ Student home screen ══ -->
+<div id="studentHome" class="quiz-screen hide">
+  <div class="quiz-shell">
+    <div class="quiz-nav">
+      <button id="studentHomeBackBtn" type="button">&#x2190; Home</button>
+      <span id="studentHomeName" class="quiz-nav-title"></span>
+    </div>
+    <div class="student-actions">
+      <button class="student-action-btn" id="goToQuizBtn" type="button">
+        <span class="sa-icon">&#x270E;</span>
+        <span><span class="sa-title">Start Quiz</span><span class="sa-desc">Practice, Challenge or Exam mode</span></span>
+      </button>
+      <button class="student-action-btn" id="goToProgressBtn" type="button">
+        <span class="sa-icon">&#x25A0;</span>
+        <span><span class="sa-title">My Progress</span><span class="sa-desc">Past attempts and scores</span></span>
+      </button>
+      <button class="student-action-btn" id="goToMistakesBtn" type="button">
+        <span class="sa-icon">&#x2717;</span>
+        <span><span class="sa-title">Mistakes Notebook</span><span class="sa-desc">Questions you got wrong</span></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Student progress screen ══ -->
+<div id="studentProgress" class="quiz-screen hide">
+  <div class="quiz-shell">
+    <div class="quiz-nav">
+      <button id="progressBackBtn" type="button">&#x2190; Back</button>
+      <span class="quiz-nav-title">My Progress</span>
+    </div>
+    <div id="progressList" class="attempt-list"></div>
+  </div>
+</div>
+
+<!-- ══ Mistakes notebook screen ══ -->
+<div id="studentMistakes" class="quiz-screen hide">
+  <div class="quiz-shell">
+    <div class="quiz-nav">
+      <button id="mistakesBackBtn" type="button">&#x2190; Back</button>
+      <span class="quiz-nav-title">Mistakes Notebook</span>
+    </div>
+    <div id="mistakesList"></div>
   </div>
 </div>
 
@@ -757,7 +896,7 @@ input:focus, select:focus, textarea:focus {
         meta.textContent = "Class " + s.grade + " · " + s.exam;
         li.appendChild(name);
         li.appendChild(meta);
-        li.addEventListener("click", function() { showQuizSetup(s); });
+        li.addEventListener("click", function() { showStudentHome(s); });
         list.appendChild(li);
       });
     } catch (_) { /* non-fatal */ }
@@ -1292,7 +1431,8 @@ input:focus, select:focus, textarea:focus {
   function showQuizSetup(student) {
     _quizStudent = student;
     $("setupStudentName").textContent = student.nickname;
-    $("appShell").style.display = "none";
+    $("appShell").style.display = "none";  // ensure hidden (also called from student home)
+    hide($("studentHome"));
     _quizMode = null;
     $("setupSubject").value = "";
     var topicSel = $("setupTopic");
@@ -1310,7 +1450,7 @@ input:focus, select:focus, textarea:focus {
 
   function hideQuizSetup() {
     hide($("quizSetup"));
-    $("appShell").style.display = "";
+    show($("studentHome"));
   }
 
   $("setupBackBtn").addEventListener("click", hideQuizSetup);
@@ -1536,8 +1676,372 @@ input:focus, select:focus, textarea:focus {
 
   $("resultsBackBtn").addEventListener("click", function() {
     hide($("quizResults"));
+    show($("studentHome"));
+  });
+
+  // ── Student home screen ──────────────────────────────────────────────────
+  function showStudentHome(student) {
+    _quizStudent = student;
+    $("studentHomeName").textContent = student.nickname;
+    $("appShell").style.display = "none";
+    hide($("quizSetup"));
+    hide($("quizInProgress"));
+    hide($("quizResults"));
+    hide($("studentProgress"));
+    hide($("studentMistakes"));
+    show($("studentHome"));
+  }
+
+  $("studentHomeBackBtn").addEventListener("click", function() {
+    hide($("studentHome"));
     $("appShell").style.display = "";
     loadStudents();
+  });
+
+  $("goToQuizBtn").addEventListener("click", function() {
+    hide($("studentHome"));
+    showQuizSetup(_quizStudent);
+  });
+
+  $("goToProgressBtn").addEventListener("click", async function() {
+    hide($("studentHome"));
+    show($("studentProgress"));
+    await loadProgress(_quizStudent.id);
+  });
+
+  $("goToMistakesBtn").addEventListener("click", async function() {
+    hide($("studentHome"));
+    show($("studentMistakes"));
+    await loadMistakes(_quizStudent.id);
+  });
+
+  $("progressBackBtn").addEventListener("click", function() {
+    hide($("studentProgress"));
+    show($("studentHome"));
+  });
+
+  $("mistakesBackBtn").addEventListener("click", function() {
+    hide($("studentMistakes"));
+    show($("studentHome"));
+  });
+
+  async function loadProgress(studentId) {
+    var list = $("progressList");
+    list.textContent = "Loading…";
+    try {
+      var attempts = await fetch("/api/student/attempts?student_id=" + studentId).then(function(r){ return r.json(); });
+      list.textContent = "";
+      if (attempts.length === 0) {
+        var p = document.createElement("p");
+        p.style.cssText = "color:var(--muted);font-size:14px";
+        p.textContent = "No attempts yet. Start a quiz!";
+        list.appendChild(p);
+        return;
+      }
+      attempts.forEach(function(a) {
+        var row = document.createElement("div");
+        row.className = "attempt-row";
+        var header = document.createElement("div");
+        header.className = "attempt-row-header";
+        var grade = document.createElement("span");
+        grade.className = "attempt-grade";
+        grade.textContent = a.grade || "–";
+        var topic = document.createElement("span");
+        topic.className = "attempt-topic";
+        topic.textContent = a.topic;
+        header.appendChild(grade);
+        header.appendChild(topic);
+        row.appendChild(header);
+        var meta = document.createElement("div");
+        meta.className = "attempt-meta";
+        var scoreText = a.score != null ? a.score + "/" + (a.score + (a.total_wrong || 0)) : "";
+        var date = a.started_at ? a.started_at.split("T")[0] : "";
+        meta.textContent = (a.subject || "") + (a.score != null ? " · " + a.score + " correct" : "") + (date ? " · " + date : "");
+        row.appendChild(meta);
+        if (a.finished_at) {
+          var pbtn = document.createElement("button");
+          pbtn.className = "btn-practise";
+          pbtn.textContent = "Practise Mistakes";
+          pbtn.dataset.attemptId = a.id;
+          pbtn.addEventListener("click", async function() {
+            try {
+              var data = await post("/api/student/practice-mistakes", {
+                student_id: studentId,
+                attempt_id: Number(this.dataset.attemptId),
+              });
+              _quizAttemptId = data.attempt_id;
+              _quizQuestions = data.questions;
+              hide($("studentProgress"));
+              renderQuizScreen(data, null);
+            } catch(e) { alert(e.message); }
+          });
+          row.appendChild(pbtn);
+        }
+        list.appendChild(row);
+      });
+    } catch(e) {
+      list.textContent = "Failed to load: " + e.message;
+    }
+  }
+
+  async function loadMistakes(studentId) {
+    var container = $("mistakesList");
+    container.textContent = "Loading…";
+    try {
+      var mistakes = await fetch("/api/student/mistakes?student_id=" + studentId).then(function(r){ return r.json(); });
+      container.textContent = "";
+      if (mistakes.length === 0) {
+        var p = document.createElement("p");
+        p.style.cssText = "color:var(--muted);font-size:14px";
+        p.textContent = "No mistakes yet — great work!";
+        container.appendChild(p);
+        return;
+      }
+      var letters = ["A","B","C","D"];
+      var byTopic = {};
+      mistakes.forEach(function(m) {
+        var key = (m.subject || "") + " · " + (m.topic || "");
+        if (!byTopic[key]) byTopic[key] = [];
+        byTopic[key].push(m);
+      });
+      Object.keys(byTopic).forEach(function(topic) {
+        var h = document.createElement("div");
+        h.className = "mistake-group-title";
+        h.textContent = topic;
+        container.appendChild(h);
+        byTopic[topic].forEach(function(m) {
+          var card = document.createElement("div");
+          card.className = "mistake-card";
+          var qEl = document.createElement("div");
+          qEl.className = "mistake-question";
+          qEl.textContent = m.question;
+          card.appendChild(qEl);
+          var ans = document.createElement("div");
+          ans.className = "mistake-correct";
+          var ca = parseInt(m.answer, 10);
+          var caLetter = letters[ca] !== undefined ? letters[ca] : "?";
+          var caText = (m.options || [])[ca] || "";
+          ans.textContent = "Correct answer: " + caLetter + ". " + caText;
+          card.appendChild(ans);
+          if (m.explanation) {
+            var exp = document.createElement("div");
+            exp.className = "mistake-explanation";
+            exp.textContent = m.explanation;
+            card.appendChild(exp);
+          }
+          container.appendChild(card);
+        });
+      });
+    } catch(e) {
+      container.textContent = "Failed to load: " + e.message;
+    }
+  }
+
+  // ── Parent: student oversight ────────────────────────────────────────────
+  $("parentOverviewDetails").addEventListener("toggle", async function() {
+    if (this.open) await loadOversight();
+  });
+
+  async function loadOversight() {
+    var ol = $("oversightList");
+    ol.textContent = "Loading…";
+    try {
+      var students = await fetch("/api/students").then(function(r){ return r.json(); });
+      ol.textContent = "";
+      if (students.length === 0) {
+        var p = document.createElement("p");
+        p.style.cssText = "font-size:14px;color:var(--muted)";
+        p.textContent = "No students yet.";
+        ol.appendChild(p);
+        return;
+      }
+      students.forEach(function(s) {
+        var el = document.createElement("div");
+        el.className = "oversight-student";
+        var nameEl = document.createElement("div");
+        nameEl.className = "oversight-name";
+        nameEl.textContent = s.nickname;
+        var metaEl = document.createElement("div");
+        metaEl.className = "oversight-smeta";
+        metaEl.textContent = "Class " + s.grade + " · " + s.exam;
+        el.appendChild(nameEl);
+        el.appendChild(metaEl);
+        var body = document.createElement("div");
+        body.className = "oversight-body";
+        el.appendChild(body);
+        el.addEventListener("click", async function(e) {
+          var expanded = el.classList.toggle("os-expanded");
+          if (expanded && body.textContent === "") {
+            body.textContent = "Loading…";
+            try {
+              var attempts = await fetch("/api/student/attempts?student_id=" + s.id).then(function(r){ return r.json(); });
+              var weakAreas = await fetch("/api/parent/weak-areas?student_id=" + s.id, {
+                headers: { "X-Parent-Pin": _parentPin },
+              }).then(function(r){ return r.json(); });
+              body.textContent = "";
+              renderOversightBody(body, attempts, weakAreas);
+            } catch(err) { body.textContent = "Failed to load"; }
+          }
+        });
+        ol.appendChild(el);
+      });
+    } catch(e) { ol.textContent = "Failed to load: " + e.message; }
+  }
+
+  function renderOversightBody(body, attempts, weakAreas) {
+    var attH = document.createElement("div");
+    attH.className = "weak-area-h";
+    attH.textContent = "Attempts";
+    body.appendChild(attH);
+    if (attempts.length === 0) {
+      var p = document.createElement("p");
+      p.style.cssText = "font-size:13px;color:var(--muted)";
+      p.textContent = "No attempts yet.";
+      body.appendChild(p);
+    } else {
+      var attList = document.createElement("div");
+      attList.className = "oversight-attempts";
+      attempts.slice(0, 5).forEach(function(a) {
+        var r = document.createElement("div");
+        r.className = "oversight-attempt-row";
+        var t = document.createElement("span");
+        t.className = "oversight-attempt-topic";
+        t.textContent = a.topic;
+        var g = document.createElement("span");
+        g.className = "oversight-attempt-grade";
+        g.textContent = a.grade || "–";
+        var sc = document.createElement("span");
+        sc.textContent = a.score != null ? a.score + " correct" : "";
+        sc.style.cssText = "font-size:13px;color:var(--muted);min-width:60px";
+        var d = document.createElement("span");
+        d.className = "oversight-attempt-date";
+        d.textContent = (a.started_at || "").split("T")[0];
+        r.appendChild(t); r.appendChild(g); r.appendChild(sc); r.appendChild(d);
+        attList.appendChild(r);
+      });
+      body.appendChild(attList);
+    }
+    if (weakAreas.length > 0) {
+      var waH = document.createElement("div");
+      waH.className = "weak-area-h";
+      waH.textContent = "Weak Areas";
+      body.appendChild(waH);
+      weakAreas.slice(0, 8).forEach(function(w) {
+        var row = document.createElement("div");
+        row.className = "weak-row";
+        var lbl = document.createElement("span");
+        lbl.className = "weak-label";
+        lbl.textContent = w.topic + " · " + w.difficulty;
+        var outer = document.createElement("div");
+        outer.className = "weak-bar-outer";
+        var inner = document.createElement("div");
+        inner.className = "weak-bar-inner";
+        inner.style.width = w.accuracy_pct + "%";
+        outer.appendChild(inner);
+        var pct = document.createElement("span");
+        pct.className = "weak-pct";
+        pct.textContent = w.accuracy_pct + "%";
+        row.appendChild(lbl); row.appendChild(outer); row.appendChild(pct);
+        body.appendChild(row);
+      });
+    }
+  }
+
+  // ── Parent: profile management ───────────────────────────────────────────
+  $("parentSettingsDetails").addEventListener("toggle", function() {
+    if (this.open) loadProfileManage();
+  });
+
+  async function loadProfileManage() {
+    var list = $("profileManageList");
+    list.textContent = "";
+    try {
+      var students = await fetch("/api/students").then(function(r){ return r.json(); });
+      students.forEach(function(s) {
+        var row = document.createElement("div");
+        row.className = "profile-manage-row";
+        var name = document.createElement("span");
+        name.className = "profile-manage-name";
+        name.textContent = s.nickname;
+        var meta = document.createElement("span");
+        meta.className = "profile-manage-meta";
+        meta.textContent = "Cl." + s.grade + " · " + s.exam;
+        var delBtn = document.createElement("button");
+        delBtn.className = "btn-sm btn-sm-danger";
+        delBtn.textContent = "Delete";
+        delBtn.dataset.sid = s.id;
+        delBtn.dataset.name = s.nickname;
+        delBtn.addEventListener("click", async function() {
+          var sid = Number(this.dataset.sid);
+          var name = this.dataset.name;
+          // Try delete; if 409 (has attempts) ask for confirmation
+          try {
+            var r = await fetch("/api/parent/students/" + sid, {
+              method: "DELETE", headers: { "X-Parent-Pin": _parentPin },
+            });
+            if (r.status === 409) {
+              if (!confirm(name + " has quiz history. This will delete all their attempts. Continue?")) return;
+              var r2 = await fetch("/api/parent/students/" + sid + "?force=true", {
+                method: "DELETE", headers: { "X-Parent-Pin": _parentPin },
+              });
+              if (!r2.ok) { var e2 = await r2.json().catch(function(){return {};}); alert(e2.detail || "Delete failed"); return; }
+            } else if (!r.ok) {
+              var e = await r.json().catch(function(){return {};}); alert(e.detail || "Delete failed"); return;
+            }
+            loadProfileManage();
+            loadStudents();
+          } catch(err) { alert("Delete failed: " + err.message); }
+        });
+        row.appendChild(name);
+        row.appendChild(meta);
+        row.appendChild(delBtn);
+        list.appendChild(row);
+      });
+    } catch(_) {}
+  }
+
+  $("addStudentBtn").addEventListener("click", async function() {
+    clearError("addStudentError");
+    var nick  = $("newNickname").value.trim();
+    var grade = $("newGrade").value;
+    var exam  = $("newExam").value;
+    if (!nick)  { setError("addStudentError", "Nickname is required."); return; }
+    if (!grade) { setError("addStudentError", "Select a class."); return; }
+    if (!exam)  { setError("addStudentError", "Select a board."); return; }
+    var r = await fetch("/api/parent/students", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Parent-Pin": _parentPin },
+      body: JSON.stringify({ nickname: nick, grade: grade, exam: exam }),
+    });
+    if (!r.ok) { var e = await r.json().catch(function(){return {};}); setError("addStudentError", e.detail || "Failed"); return; }
+    $("newNickname").value = "";
+    $("newGrade").value = "";
+    $("newExam").value = "";
+    $("addStudentDetails").open = false;
+    loadProfileManage();
+    loadStudents();
+  });
+
+  $("changePinBtn").addEventListener("click", async function() {
+    clearError("pinChangeError");
+    $("pinChangeOk").style.display = "none";
+    var p1 = $("newPin1").value;
+    var p2 = $("newPin2").value;
+    if (!/^\d{4,8}$/.test(p1)) { setError("pinChangeError", "PIN must be 4–8 digits."); return; }
+    if (p1 !== p2)              { setError("pinChangeError", "PINs do not match."); return; }
+    try {
+      var r = await fetch("/api/parent/settings/pin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Parent-Pin": _parentPin },
+        body: JSON.stringify({ new_pin: p1, confirm_pin: p2 }),
+      });
+      if (!r.ok) { var e = await r.json().catch(function(){return {};}); setError("pinChangeError", e.detail || "Failed"); return; }
+      _parentPin = p1;
+      $("newPin1").value = "";
+      $("newPin2").value = "";
+      $("pinChangeOk").textContent = "PIN changed.";
+      $("pinChangeOk").style.display = "block";
+    } catch(err) { setError("pinChangeError", err.message); }
   });
 
   // ── bootstrap ────────────────────────────────────────────────────────────
