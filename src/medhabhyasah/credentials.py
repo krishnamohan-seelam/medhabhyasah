@@ -1,9 +1,10 @@
-"""Credential Manager access via keyring. API key never leaves this module."""
+"""Credential Manager access via keyring. API keys never leave this module."""
 import keyring
 
 _SERVICE = "medhabhyasah"
 _PIN_USER = "parent-pin"
 _API_KEY_USER = "anthropic-api-key"
+_GEMINI_KEY_USER = "gemini-api-key"
 
 
 def store_pin(pin: str) -> None:
@@ -19,9 +20,39 @@ def has_pin() -> bool:
     return keyring.get_password(_SERVICE, _PIN_USER) is not None
 
 
+# ── Anthropic ─────────────────────────────────────────────────────────────────
+
 def store_api_key(api_key: str) -> None:
     keyring.set_password(_SERVICE, _API_KEY_USER, api_key)
 
 
 def get_api_key() -> str | None:
     return keyring.get_password(_SERVICE, _API_KEY_USER)
+
+
+# ── Google Gemini ─────────────────────────────────────────────────────────────
+
+def store_gemini_key(api_key: str) -> None:
+    keyring.set_password(_SERVICE, _GEMINI_KEY_USER, api_key)
+
+
+def get_gemini_key() -> str | None:
+    return keyring.get_password(_SERVICE, _GEMINI_KEY_USER)
+
+
+def has_gemini_key() -> bool:
+    return keyring.get_password(_SERVICE, _GEMINI_KEY_USER) is not None
+
+
+# ── Provider detection ────────────────────────────────────────────────────────
+
+def configured_provider() -> str | None:
+    """Return 'anthropic', 'gemini', or None depending on which key is stored.
+
+    If both are stored, Anthropic takes precedence (set up first).
+    """
+    if keyring.get_password(_SERVICE, _API_KEY_USER) is not None:
+        return "anthropic"
+    if keyring.get_password(_SERVICE, _GEMINI_KEY_USER) is not None:
+        return "gemini"
+    return None

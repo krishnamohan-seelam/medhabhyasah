@@ -282,12 +282,12 @@ input:focus, select:focus, textarea:focus {
 
     <!-- Step 2: API key -->
     <div class="step-pane" id="step2">
-      <h1 class="setup-title">Add your Anthropic API key</h1>
+      <h1 class="setup-title">Add your AI API key</h1>
       <p class="setup-desc">The key is stored in Windows Credential Manager. It is never written to a file, shown in the app, or sent to a student screen.</p>
       <div class="field">
         <label class="field-label" for="apiKey">API key</label>
-        <input type="password" id="apiKey" autocomplete="off" placeholder="sk-ant-…">
-        <p class="field-hint">Get your key at console.anthropic.com → API Keys.</p>
+        <input type="password" id="apiKey" autocomplete="off" placeholder="sk-ant-… or AIza…">
+        <p class="field-hint">Anthropic key (starts with <code>sk-ant-</code>): console.anthropic.com → API Keys.<br>Google Gemini key (starts with <code>AIza</code>): aistudio.google.com → Get API key.</p>
       </div>
       <div class="error-msg" id="keyError" role="alert"></div>
       <div class="setup-footer">

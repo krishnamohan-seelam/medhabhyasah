@@ -287,3 +287,96 @@ def test_generate_route_404_for_missing_request(tmp_path: Path):
             headers={"X-Parent-Pin": "1234"},
         )
     assert r.status_code == 404
+
+
+# ── Gemini dispatch tests ─────────────────────────────────────────────────────
+
+def _dual_keyring_mock_gemini(pin="1234", api_key="AIzaFakeGeminiKey"):
+    """Keyring mock that routes to the Gemini key slot."""
+    mock_kr = MagicMock()
+
+    def _get(service, user):
+        if user == "parent-pin":
+            return pin
+        if user == "gemini-api-key":
+            return api_key
+        return None
+
+    mock_kr.get_password = MagicMock(side_effect=_get)
+    mock_kr.set_password = MagicMock()
+    return mock_kr
+
+
+def _make_gemini_response(questions: list[dict], input_tokens=1000, output_tokens=500):
+    """Build a fake google.genai generate_content() return value."""
+    import json as _json
+    response = MagicMock()
+    response.text = _json.dumps(questions)
+    usage = MagicMock()
+    usage.prompt_token_count = input_tokens
+    usage.candidates_token_count = output_tokens
+    response.usage_metadata = usage
+    return response
+
+
+@patch("medhabhyasah.credentials.keyring")
+def test_generate_questions_gemini_dispatch(mock_kr):
+    mock_kr.get_password = MagicMock(side_effect=lambda s, u: (
+        "AIzaFakeGeminiKey" if u == "gemini-api-key" else None
+    ))
+
+    mock_response = _make_gemini_response([_VALID_QUESTION] * 3)
+    mock_models = MagicMock()
+    mock_models.generate_content.return_value = mock_response
+    mock_client = MagicMock()
+    mock_client.models = mock_models
+    mock_genai = MagicMock()
+    mock_genai.Client.return_value = mock_client
+    mock_genai_types = MagicMock()
+
+    with patch.dict("sys.modules", {
+        "google": MagicMock(genai=mock_genai),
+        "google.genai": mock_genai,
+        "google.genai.types": mock_genai_types,
+    }):
+        from medhabhyasah.generation import generate_questions
+        result = generate_questions("Maths", "Algebra", "9", "CBSE", "", 3)
+
+    assert len(result.questions) == 3
+    mock_models.generate_content.assert_called_once()
+
+
+@patch("medhabhyasah.credentials.keyring")
+def test_generate_questions_gemini_cost_calculation(mock_kr):
+    mock_kr.get_password = MagicMock(side_effect=lambda s, u: (
+        "AIzaFakeGeminiKey" if u == "gemini-api-key" else None
+    ))
+
+    # 1M input → $0.10, 1M output → $0.40 → total $0.50
+    mock_response = _make_gemini_response([_VALID_QUESTION], input_tokens=1_000_000, output_tokens=1_000_000)
+    mock_models = MagicMock()
+    mock_models.generate_content.return_value = mock_response
+    mock_client = MagicMock()
+    mock_client.models = mock_models
+    mock_genai = MagicMock()
+    mock_genai.Client.return_value = mock_client
+    mock_genai_types = MagicMock()
+
+    with patch.dict("sys.modules", {
+        "google": MagicMock(genai=mock_genai),
+        "google.genai": mock_genai,
+        "google.genai.types": mock_genai_types,
+    }):
+        from medhabhyasah.generation import generate_questions
+        result = generate_questions("Science", "Cells", "7", "CBSE", "", 1)
+
+    assert abs(result.api_cost_usd - 0.50) < 0.001
+
+
+@patch("medhabhyasah.credentials.keyring")
+def test_generate_questions_no_key_raises(mock_kr):
+    mock_kr.get_password = MagicMock(return_value=None)
+
+    from medhabhyasah.generation import generate_questions
+    with pytest.raises(RuntimeError, match="No API key"):
+        generate_questions("Maths", "Algebra", "9", "CBSE", "", 5)

@@ -53,8 +53,8 @@ class ApiKeyRequest(BaseModel):
     @field_validator("api_key")
     @classmethod
     def key_format(cls, v: str) -> str:
-        if not v.startswith("sk-ant-"):
-            raise ValueError("API key must start with sk-ant-")
+        if not (v.startswith("sk-ant-") or v.startswith("AIza")):
+            raise ValueError("API key must start with sk-ant- (Anthropic) or AIza (Google Gemini)")
         return v
 
 
@@ -131,7 +131,10 @@ def create_app(db_path: Path | None = None) -> FastAPI:
         conn = _conn()
         needs = count_students(conn) == 0
         conn.close()
-        return {"needs_setup": needs}
+        return {
+            "needs_setup": needs,
+            "configured_provider": credentials.configured_provider(),
+        }
 
     @app.post("/api/setup/pin")
     async def setup_pin(body: PinRequest) -> dict:
@@ -140,8 +143,12 @@ def create_app(db_path: Path | None = None) -> FastAPI:
 
     @app.post("/api/setup/apikey")
     async def setup_apikey(body: ApiKeyRequest) -> dict:
-        credentials.store_api_key(body.api_key)
-        return {"ok": True}
+        key = body.api_key
+        if key.startswith("sk-ant-"):
+            credentials.store_api_key(key)
+        else:
+            credentials.store_gemini_key(key)
+        return {"ok": True, "provider": "anthropic" if key.startswith("sk-ant-") else "gemini"}
 
     @app.post("/api/setup/student")
     async def setup_student(body: StudentRequest) -> dict:

@@ -12,11 +12,15 @@ import anthropic
 
 from medhabhyasah import credentials
 
-_MODEL = "claude-opus-5-5"
+# Anthropic claude-opus-5-5 pricing per 1M tokens
+_ANTHROPIC_MODEL = "claude-opus-5-5"
+_ANTHROPIC_INPUT_COST_PER_MTOK = 4.00
+_ANTHROPIC_OUTPUT_COST_PER_MTOK = 20.00
 
-# Pricing per 1M tokens for claude-opus-5-5
-_INPUT_COST_PER_MTOK = 4.00
-_OUTPUT_COST_PER_MTOK = 20.00
+# Google Gemini gemini-2.0-flash-001 pricing per 1M tokens
+_GEMINI_MODEL = "gemini-2.0-flash-001"
+_GEMINI_INPUT_COST_PER_MTOK = 0.10
+_GEMINI_OUTPUT_COST_PER_MTOK = 0.40
 
 _SYSTEM = (
     "You are a curriculum-aligned multiple-choice question generator for Indian school exams. "
@@ -90,6 +94,53 @@ Rules:
 """
 
 
+def _generate_anthropic(api_key: str, prompt: str) -> GenerationResult:
+    client = anthropic.Anthropic(api_key=api_key)
+    response = client.messages.create(
+        model=_ANTHROPIC_MODEL,
+        max_tokens=16000,
+        system=_SYSTEM,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    raw = "".join(block.text for block in response.content if block.type == "text")
+    input_tokens = response.usage.input_tokens
+    output_tokens = response.usage.output_tokens
+    api_cost_usd = (
+        (input_tokens / 1_000_000) * _ANTHROPIC_INPUT_COST_PER_MTOK
+        + (output_tokens / 1_000_000) * _ANTHROPIC_OUTPUT_COST_PER_MTOK
+    )
+    questions = json.loads(raw.strip())
+    if not isinstance(questions, list):
+        raise ValueError("Anthropic API did not return a JSON array")
+    return GenerationResult(questions=questions, api_cost_usd=api_cost_usd)
+
+
+def _generate_gemini(api_key: str, prompt: str) -> GenerationResult:
+    from google import genai
+    from google.genai import types as genai_types
+
+    client = genai.Client(api_key=api_key)
+    response = client.models.generate_content(
+        model=_GEMINI_MODEL,
+        contents=f"{_SYSTEM}\n\n{prompt}",
+        config=genai_types.GenerateContentConfig(
+            response_mime_type="application/json",
+        ),
+    )
+    raw = response.text
+    usage = response.usage_metadata
+    input_tokens = usage.prompt_token_count or 0
+    output_tokens = usage.candidates_token_count or 0
+    api_cost_usd = (
+        (input_tokens / 1_000_000) * _GEMINI_INPUT_COST_PER_MTOK
+        + (output_tokens / 1_000_000) * _GEMINI_OUTPUT_COST_PER_MTOK
+    )
+    questions = json.loads(raw.strip())
+    if not isinstance(questions, list):
+        raise ValueError("Gemini API did not return a JSON array")
+    return GenerationResult(questions=questions, api_cost_usd=api_cost_usd)
+
+
 def generate_questions(
     subject: str,
     topic: str,
@@ -98,38 +149,23 @@ def generate_questions(
     references_text: str,
     question_count: int,
 ) -> GenerationResult:
-    """Call the Anthropic API and return questions with cost.
+    """Call the configured AI provider and return questions with cost.
 
     Only call from parent-zone routes. Never call from student routes.
     """
-    api_key = credentials.get_api_key()
-    if not api_key:
-        raise RuntimeError("Anthropic API key not configured in Credential Manager")
-
-    client = anthropic.Anthropic(api_key=api_key)
-
+    provider = credentials.configured_provider()
     prompt = _build_prompt(subject, topic, grade, exam, references_text, question_count)
 
-    response = client.messages.create(
-        model=_MODEL,
-        max_tokens=16000,
-        system=_SYSTEM,
-        messages=[{"role": "user", "content": prompt}],
-    )
+    if provider == "anthropic":
+        api_key = credentials.get_api_key()
+        if not api_key:
+            raise RuntimeError("Anthropic API key not configured in Credential Manager")
+        return _generate_anthropic(api_key, prompt)
 
-    raw = "".join(
-        block.text for block in response.content if block.type == "text"
-    )
+    if provider == "gemini":
+        api_key = credentials.get_gemini_key()
+        if not api_key:
+            raise RuntimeError("Gemini API key not configured in Credential Manager")
+        return _generate_gemini(api_key, prompt)
 
-    input_tokens = response.usage.input_tokens
-    output_tokens = response.usage.output_tokens
-    api_cost_usd = (
-        (input_tokens / 1_000_000) * _INPUT_COST_PER_MTOK
-        + (output_tokens / 1_000_000) * _OUTPUT_COST_PER_MTOK
-    )
-
-    questions = json.loads(raw.strip())
-    if not isinstance(questions, list):
-        raise ValueError("Anthropic API did not return a JSON array")
-
-    return GenerationResult(questions=questions, api_cost_usd=api_cost_usd)
+    raise RuntimeError("No API key configured in Credential Manager")

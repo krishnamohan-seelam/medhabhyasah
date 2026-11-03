@@ -237,3 +237,88 @@ def test_generation_not_imported_at_api_module_level():
         "medhabhyasah.generation was imported at module level in api/__init__.py — "
         "student routes would have access to the generation module"
     )
+
+
+# ── Rule 8: API keys never leave generation module ───────────────────────────
+
+def test_gemini_key_not_returned_in_generation_result():
+    """GenerationResult must not contain the Gemini API key."""
+    import json
+    from unittest.mock import MagicMock, patch
+
+    gemini_key = "AIzaFakeKey12345"
+
+    def _get(service, user):
+        if user == "gemini-api-key":
+            return gemini_key
+        return None
+
+    mock_kr = MagicMock()
+    mock_kr.get_password = MagicMock(side_effect=_get)
+
+    mock_response = MagicMock()
+    mock_response.text = json.dumps([_base_q()])
+    mock_usage = MagicMock()
+    mock_usage.prompt_token_count = 100
+    mock_usage.candidates_token_count = 200
+    mock_response.usage_metadata = mock_usage
+
+    mock_models = MagicMock()
+    mock_models.generate_content.return_value = mock_response
+    mock_client = MagicMock()
+    mock_client.models = mock_models
+
+    mock_genai = MagicMock()
+    mock_genai.Client.return_value = mock_client
+
+    with (
+        patch("medhabhyasah.credentials.keyring", mock_kr),
+        patch.dict("sys.modules", {"google.genai": mock_genai, "google": MagicMock(genai=mock_genai), "google.genai.types": MagicMock()}),
+    ):
+        from medhabhyasah.generation import GenerationResult, generate_questions
+        result = generate_questions("Maths", "Algebra", "9", "CBSE", "", 1)
+
+    assert isinstance(result, GenerationResult)
+    result_str = json.dumps({"questions": result.questions, "cost": result.api_cost_usd})
+    assert gemini_key not in result_str, "Gemini API key must not appear in GenerationResult"
+
+
+def test_anthropic_key_not_returned_in_generation_result():
+    """GenerationResult must not contain the Anthropic API key."""
+    import json
+    from unittest.mock import MagicMock, patch
+
+    anthropic_key = "sk-ant-secret-key-abc123"
+
+    def _get(service, user):
+        if user == "anthropic-api-key":
+            return anthropic_key
+        return None
+
+    mock_kr = MagicMock()
+    mock_kr.get_password = MagicMock(side_effect=_get)
+
+    text_block = MagicMock()
+    text_block.type = "text"
+    text_block.text = json.dumps([_base_q()])
+    mock_response = MagicMock()
+    mock_response.content = [text_block]
+    mock_usage = MagicMock()
+    mock_usage.input_tokens = 100
+    mock_usage.output_tokens = 200
+    mock_response.usage = mock_usage
+
+    mock_anthropic_client = MagicMock()
+    mock_anthropic_client.messages.create.return_value = mock_response
+    MockAnthropic = MagicMock(return_value=mock_anthropic_client)
+
+    with (
+        patch("medhabhyasah.generation.anthropic.Anthropic", MockAnthropic),
+        patch("medhabhyasah.credentials.keyring", mock_kr),
+    ):
+        from medhabhyasah.generation import GenerationResult, generate_questions
+        result = generate_questions("Maths", "Algebra", "9", "CBSE", "", 1)
+
+    assert isinstance(result, GenerationResult)
+    result_str = json.dumps({"questions": result.questions, "cost": result.api_cost_usd})
+    assert anthropic_key not in result_str, "Anthropic API key must not appear in GenerationResult"

@@ -11,6 +11,7 @@ requires-python = ">=3.11"
 authors = [{ name = "Krishna Mohan Seelam" }]
 dependencies = [
     "anthropic",
+    "google-genai",
     "fastapi",
     "keyring",
     "pydantic>=2",
