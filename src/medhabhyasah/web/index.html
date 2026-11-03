@@ -637,6 +637,7 @@ input:focus, select:focus, textarea:focus {
       <div class="aq-header">
         <button id="aqBackBtn" type="button">&#x2190; Back</button>
         <span id="aqTitle" class="aq-title"></span>
+        <button id="approveAllBtn" type="button" style="margin-left:auto">Approve All</button>
       </div>
       <div id="aqSummary" class="aq-summary"></div>
       <div id="aqCards" class="aq-cards"></div>
@@ -1149,6 +1150,33 @@ input:focus, select:focus, textarea:focus {
   }
 
   $("aqBackBtn").addEventListener("click", hideApprovalQueue);
+
+  $("approveAllBtn").addEventListener("click", async function () {
+    var cards = Array.from($("aqCards").querySelectorAll(".q-card"));
+    var pending = cards.filter(function (c) {
+      var badge = c.querySelector(".req-badge");
+      return badge && badge.textContent !== "approved";
+    });
+    if (pending.length === 0) return;
+    if (!confirm("Approve all " + pending.length + " non-approved question(s)?")) return;
+    this.disabled = true;
+    var errors = 0;
+    await Promise.all(pending.map(async function (card) {
+      var qid = card.dataset.qid;
+      try {
+        var r = await fetch("/api/parent/questions/" + qid + "/approve", {
+          method: "POST", headers: { "X-Parent-Pin": _parentPin },
+        });
+        if (!r.ok) { errors++; return; }
+        var badge = card.querySelector(".req-badge");
+        if (badge) { badge.className = "req-badge badge-approved"; badge.textContent = "approved"; }
+        card.className = "q-card q-approved";
+      } catch (_) { errors++; }
+    }));
+    this.disabled = false;
+    renderApprovalSummary(collectCurrentStatuses());
+    if (errors > 0) alert(errors + " question(s) could not be approved.");
+  });
 
   async function loadApprovalQueue(reqId) {
     var container = $("aqCards");
