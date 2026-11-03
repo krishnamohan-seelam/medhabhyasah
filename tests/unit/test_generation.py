@@ -155,6 +155,18 @@ def _create_req(c, mock_kr, subject="Maths", topic="Fractions", count=5):
     return r.json()["id"]
 
 
+def _parse_sse_done(response) -> dict:
+    """Extract the 'done' event from an SSE response."""
+    for line in response.text.strip().split("\n"):
+        line = line.strip()
+        if not line.startswith("data: "):
+            continue
+        data = json.loads(line[6:])
+        if data.get("step") == "done":
+            return data
+    raise AssertionError("No 'done' SSE event found in response")
+
+
 def _dual_keyring_mock(pin="1234", api_key="sk-ant-test"):
     """Return a keyring mock that serves PIN and API key from separate user slots."""
     mock_kr = MagicMock()
@@ -202,7 +214,7 @@ def test_generate_route_stores_questions_and_cost(tmp_path: Path):
         )
 
     assert r.status_code == 200
-    body = r.json()
+    body = _parse_sse_done(r)
     assert body["question_count"] == 5
     assert body["auto_checked"] == 5
     assert body["draft"] == 0
