@@ -226,6 +226,16 @@ def create_question(
     return cur.lastrowid
 
 
+def get_question(conn: sqlite3.Connection, question_id: int) -> dict | None:
+    row = conn.execute(
+        "SELECT id, generation_request_id, difficulty, type, question, options, "
+        "answer, explanation, source_quote, status, check_failure, created_at "
+        "FROM questions WHERE id = ?",
+        (question_id,),
+    ).fetchone()
+    return dict(row) if row else None
+
+
 def list_questions(
     conn: sqlite3.Connection,
     generation_request_id: int | None = None,
@@ -267,6 +277,30 @@ def update_question(
     params.append(question_id)
     conn.execute(f"UPDATE questions SET {','.join(sets)} WHERE id=?", params)
     conn.commit()
+
+
+def list_approved_questions(
+    conn: sqlite3.Connection,
+    generation_request_id: int | None = None,
+    subject: str | None = None,
+) -> list[dict]:
+    """Return approved questions joined with their generation request metadata."""
+    sql = (
+        "SELECT q.id, q.generation_request_id, q.difficulty, q.type, q.question, "
+        "q.options, q.answer, q.explanation, q.source_quote, q.status, "
+        "gr.subject, gr.topic, gr.grade, gr.exam "
+        "FROM questions q "
+        "JOIN generation_requests gr ON gr.id = q.generation_request_id "
+        "WHERE q.status = 'approved'"
+    )
+    params: list = []
+    if generation_request_id is not None:
+        sql += " AND q.generation_request_id = ?"
+        params.append(generation_request_id)
+    if subject is not None:
+        sql += " AND gr.subject = ?"
+        params.append(subject)
+    return [dict(r) for r in conn.execute(sql, params).fetchall()]
 
 
 # ── Attempts ──────────────────────────────────────────────────────────────────

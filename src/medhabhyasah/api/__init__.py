@@ -19,10 +19,13 @@ from medhabhyasah.db import (
     delete_generation_request,
     get_connection,
     get_generation_request,
+    get_question,
+    list_approved_questions,
     list_generation_requests,
     list_questions,
     list_students,
     update_generation_request_status,
+    update_question,
 )
 
 # Ensure correct MIME type for woff2 fonts (not always registered on Windows)
@@ -70,6 +73,27 @@ class StudentRequest(BaseModel):
         if not v.strip():
             raise ValueError("Field must not be blank")
         return v.strip()
+
+
+class QuestionUpdateRequest(BaseModel):
+    question: str | None = None
+    options: list[str] | None = None
+    answer: int | None = None
+    explanation: str | None = None
+
+    @field_validator("options")
+    @classmethod
+    def valid_options(cls, v: list[str] | None) -> list[str] | None:
+        if v is not None and len(v) != 4:
+            raise ValueError("options must have exactly 4 items")
+        return v
+
+    @field_validator("answer")
+    @classmethod
+    def valid_answer(cls, v: int | None) -> int | None:
+        if v is not None and v not in (0, 1, 2, 3):
+            raise ValueError("answer must be 0, 1, 2, or 3")
+        return v
 
 
 class GenerationRequest(BaseModel):
@@ -187,6 +211,105 @@ def create_app(db_path: Path | None = None) -> FastAPI:
         else:
             credentials.store_gemini_key(key)
         return {"ok": True, "provider": "anthropic" if key.startswith("sk-ant-") else "gemini"}
+
+    # ── Parent: question approval ─────────────────────────────────────────────
+
+    def _parse_options(row: dict) -> dict:
+        try:
+            row["options"] = json.loads(row["options"])
+        except (json.JSONDecodeError, TypeError):
+            row["options"] = []
+        try:
+            row["answer"] = int(row["answer"])
+        except (ValueError, TypeError):
+            pass
+        return row
+
+    @app.patch("/api/parent/questions/{question_id}")
+    async def patch_question(
+        question_id: int, body: QuestionUpdateRequest, pin: str = Depends(_require_pin)
+    ) -> dict:
+        conn = _conn()
+        q = get_question(conn, question_id)
+        conn.close()
+        if q is None:
+            raise HTTPException(404, "Question not found")
+        conn = _conn()
+        update_question(
+            conn,
+            question_id,
+            question=body.question,
+            options=json.dumps(body.options) if body.options is not None else None,
+            answer=str(body.answer) if body.answer is not None else None,
+            explanation=body.explanation,
+        )
+        conn.close()
+        return {"ok": True}
+
+    @app.post("/api/parent/questions/{question_id}/approve")
+    async def approve_question(
+        question_id: int, pin: str = Depends(_require_pin)
+    ) -> dict:
+        conn = _conn()
+        q = get_question(conn, question_id)
+        conn.close()
+        if q is None:
+            raise HTTPException(404, "Question not found")
+        conn = _conn()
+        update_question(conn, question_id, status="approved")
+        conn.close()
+        return {"ok": True, "status": "approved"}
+
+    @app.post("/api/parent/questions/{question_id}/reject")
+    async def reject_question(
+        question_id: int, pin: str = Depends(_require_pin)
+    ) -> dict:
+        conn = _conn()
+        q = get_question(conn, question_id)
+        conn.close()
+        if q is None:
+            raise HTTPException(404, "Question not found")
+        conn = _conn()
+        update_question(conn, question_id, status="rejected")
+        conn.close()
+        return {"ok": True, "status": "rejected"}
+
+    @app.post("/api/parent/questions/{question_id}/undo")
+    async def undo_question(
+        question_id: int, pin: str = Depends(_require_pin)
+    ) -> dict:
+        conn = _conn()
+        q = get_question(conn, question_id)
+        conn.close()
+        if q is None:
+            raise HTTPException(404, "Question not found")
+        # Revert to auto_checked if it passed safety, otherwise draft
+        conn = _conn()
+        q2 = get_question(conn, question_id)
+        conn.close()
+        revert_status = "auto_checked" if q2["check_failure"] is None else "draft"
+        conn = _conn()
+        update_question(conn, question_id, status=revert_status)
+        conn.close()
+        return {"ok": True, "status": revert_status}
+
+    # ── Student: questions (approved only) ────────────────────────────────────
+
+    @app.get("/api/student/questions")
+    async def get_student_questions(
+        generation_request_id: int | None = None,
+        subject: str | None = None,
+    ) -> list:
+        conn = _conn()
+        rows = list_approved_questions(
+            conn,
+            generation_request_id=generation_request_id,
+            subject=subject,
+        )
+        conn.close()
+        for row in rows:
+            _parse_options(row)
+        return rows
 
     # ── Parent: generation requests ───────────────────────────────────────────
 
@@ -322,10 +445,7 @@ def create_app(db_path: Path | None = None) -> FastAPI:
         rows = list_questions(conn, generation_request_id=req_id)
         conn.close()
         for row in rows:
-            try:
-                row["options"] = json.loads(row["options"])
-            except (json.JSONDecodeError, TypeError):
-                row["options"] = []
+            _parse_options(row)
         return rows
 
     return app
