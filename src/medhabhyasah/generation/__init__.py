@@ -17,8 +17,8 @@ _ANTHROPIC_MODEL = "claude-opus-5-5"
 _ANTHROPIC_INPUT_COST_PER_MTOK = 4.00
 _ANTHROPIC_OUTPUT_COST_PER_MTOK = 20.00
 
-# Google Gemini gemini-2.0-flash-001 pricing per 1M tokens
-_GEMINI_MODEL = "gemini-2.0-flash-001"
+# Google Gemini gemini-2.5-flash-8b pricing per 1M tokens
+_GEMINI_MODEL = "gemini-2.5-flash-8b"
 _GEMINI_INPUT_COST_PER_MTOK = 0.10
 _GEMINI_OUTPUT_COST_PER_MTOK = 0.40
 
