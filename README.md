@@ -4,7 +4,7 @@ Medhabhyasah (*medhā* + *abhyāsaḥ*, "practice that sharpens the mind") is a 
 
 ## Status
 
-The project is scaffolded. No app features are built yet.
+See `packaging/README.md` to build the Windows installer.
 
 ## Develop
 
