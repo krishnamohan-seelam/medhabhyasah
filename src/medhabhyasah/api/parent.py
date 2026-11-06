@@ -229,7 +229,12 @@ async def post_generation_request(
 async def trigger_generation(
     request: Request, req_id: int, pin: None = Depends(require_pin),
 ) -> StreamingResponse:
-    from medhabhyasah.generation import ProviderAccessError, generate_questions
+    from medhabhyasah.generation import (
+        GenerationFailure,
+        ProviderAccessError,
+        failure_from,
+        generate_questions,
+    )
     from medhabhyasah.safety import check_difficulty_distribution, check_question
 
     db_path = request.app.state.db_path
@@ -259,9 +264,13 @@ async def trigger_generation(
         except Exception as exc:
             with open_db(db_path) as conn:
                 update_generation_request_status(conn, req_id, "failed")
-            payload = {"error": str(exc)}
+            # Only fixed, safe messages reach the screen. Anything else is
+            # classified and its detail goes to the scrubbed log file.
             if isinstance(exc, ProviderAccessError):
-                payload["provider_issue"] = exc.to_dict()
+                payload = {"error": str(exc), "provider_issue": exc.to_dict()}
+            else:
+                failure = exc if isinstance(exc, GenerationFailure) else failure_from(exc, "unknown", "unknown")
+                payload = {"error": str(failure), "failure_kind": failure.kind}
             yield f"data: {json.dumps(payload)}\n\n"
             return
 

@@ -11,7 +11,7 @@ from pathlib import Path
 
 import anthropic
 
-from medhabhyasah import credentials, model_config
+from medhabhyasah import credentials, model_config, safe_log
 from medhabhyasah.model_config import ModelSettings
 
 _PROMPT_RULES = (Path(__file__).parent / "quiz_generator_prompt.md").read_text(encoding="utf-8")
@@ -63,6 +63,68 @@ class ProviderAccessError(RuntimeError):
             "message": str(self),
             "links": self.links,
         }
+
+
+_FAILURE_MESSAGES = {
+    "timeout": "The AI provider took too long to answer. Try again, or generate fewer questions.",
+    "network": "Could not reach the AI provider. Check the internet connection and try again.",
+    "rate_limit": "The provider is limiting requests right now. Wait a minute and try again.",
+    "billing": (
+        "The provider says this account has no credit or has a billing problem. "
+        "Check the account's billing page with the provider, then try again."
+    ),
+    "outage": "The provider is having problems or is overloaded. Try again in a few minutes.",
+    "bad_output": (
+        "The AI answered in a format the app could not read. Try again. "
+        "If it keeps happening, generate fewer questions."
+    ),
+    "unknown": (
+        "Generation failed unexpectedly. Details were saved to the log file "
+        "(medhabhyasah.log in %APPDATA%\\Medhabhyasah). Try again, and keep that file "
+        "if it keeps happening."
+    ),
+}
+
+
+class GenerationFailure(RuntimeError):
+    """A failure with a fixed, safe message for the parent.
+
+    The message never comes from the provider's error text. kind is one of
+    _FAILURE_MESSAGES or "no_key".
+    """
+
+    def __init__(self, kind: str, message: str | None = None) -> None:
+        super().__init__(message or _FAILURE_MESSAGES[kind])
+        self.kind = kind
+
+
+def _failure_kind(exc: BaseException) -> str:
+    """Sort a provider or network error into a known kind. Text is used only to classify."""
+    name = type(exc).__name__.lower()
+    code = getattr(exc, "status_code", None) or getattr(exc, "code", None)
+    code = code if isinstance(code, int) else None
+    text = str(exc).lower()
+
+    if isinstance(exc, (anthropic.APITimeoutError, TimeoutError)) or "timeout" in name:
+        return "timeout"
+    if isinstance(exc, (anthropic.APIConnectionError, ConnectionError)) or "connecterror" in name:
+        return "network"
+    if "credit balance" in text or "billing" in text:
+        return "billing"
+    if isinstance(exc, anthropic.RateLimitError) or code == 429:
+        return "rate_limit"
+    if code is not None and code >= 500:
+        return "outage"
+    if isinstance(exc, ValueError):  # includes json.JSONDecodeError
+        return "bad_output"
+    return "unknown"
+
+
+def failure_from(exc: BaseException, provider: str, model: str) -> GenerationFailure:
+    """Turn any error into a safe GenerationFailure and log the scrubbed detail."""
+    kind = _failure_kind(exc)
+    safe_log.log_exception(f"generation failed: provider={provider} model={model} kind={kind}", exc)
+    return GenerationFailure(kind)
 
 
 def _classify_anthropic_error(exc: Exception, model: str) -> ProviderAccessError | None:
@@ -196,14 +258,18 @@ def generate_questions(
     """
     provider = model_config.selected_provider() or credentials.configured_provider()
     if provider is None:
-        raise RuntimeError("No API key configured in Credential Manager")
-    prompt = _build_prompt(subject, topic, grade, exam, references_text, question_count)
+        raise GenerationFailure("no_key", "No API key configured in Credential Manager")
     cfg = model_config.settings_for(provider)
-    api_key = credentials.get_key_for(provider)
-    if not api_key:
-        name = model_config.PROVIDERS[provider]["name"]
-        raise RuntimeError(f"{name} API key not configured in Credential Manager")
-
-    if provider == "anthropic":
-        return _generate_anthropic(api_key, prompt, cfg)
-    return _generate_gemini(api_key, prompt, cfg)
+    try:
+        prompt = _build_prompt(subject, topic, grade, exam, references_text, question_count)
+        api_key = credentials.get_key_for(provider)
+        if not api_key:
+            name = model_config.PROVIDERS[provider]["name"]
+            raise GenerationFailure("no_key", f"{name} API key not configured in Credential Manager")
+        if provider == "anthropic":
+            return _generate_anthropic(api_key, prompt, cfg)
+        return _generate_gemini(api_key, prompt, cfg)
+    except (ProviderAccessError, GenerationFailure):
+        raise
+    except Exception as exc:
+        raise failure_from(exc, provider, cfg.model) from None
