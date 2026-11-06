@@ -616,6 +616,28 @@ input:focus, select:focus, textarea:focus {
             Current AI provider: <strong id="currentProvider">loading…</strong>
           </p>
           <div class="field">
+            <label class="field-label" for="modelProvider">AI provider for question generation</label>
+            <select id="modelProvider"></select>
+          </div>
+          <div class="field">
+            <label class="field-label" for="modelId">Model</label>
+            <input type="text" id="modelId" autocomplete="off" spellcheck="false">
+            <p class="field-hint" id="modelKeyStatus"></p>
+            <p class="field-hint">If the provider retires this model, enter a current model name from the provider's model list.</p>
+          </div>
+          <div class="field">
+            <label class="field-label" for="modelInCost">Price per 1M tokens (USD): input / output</label>
+            <input type="number" id="modelInCost" min="0" step="0.01" style="width:90px">
+            <input type="number" id="modelOutCost" min="0" step="0.01" style="width:90px">
+          </div>
+          <ul id="modelLinks" style="margin:0 0 8px;padding-left:18px;font-size:13px"></ul>
+          <div class="error-msg" id="modelError" role="alert"></div>
+          <div id="modelOk" style="display:none;font-size:13px;color:#2e7d32;margin-bottom:8px"></div>
+          <button id="modelSaveBtn" type="button">Save model</button>
+
+          <hr style="margin:20px 0;border:none;border-top:1px solid var(--line)">
+
+          <div class="field">
             <label class="field-label" for="settingsApiKey">Replace API key</label>
             <input type="password" id="settingsApiKey" autocomplete="off" placeholder="sk-ant-… or AIza…">
             <p class="field-hint">Anthropic key starts with <code>sk-ant-</code> · Gemini key starts with <code>AIza</code></p>
@@ -831,6 +853,18 @@ input:focus, select:focus, textarea:focus {
   </div>
 </div>
 
+<!-- Provider issue dialog (model retired or key rejected) -->
+<div id="providerIssue" class="dialog-overlay hide" role="alertdialog" aria-modal="true" aria-labelledby="providerIssueTitle">
+  <div class="dialog-card">
+    <h2 class="dialog-title" id="providerIssueTitle">Model or key not accepted</h2>
+    <p id="providerIssueMsg" style="font-size:14px;line-height:1.5"></p>
+    <p style="font-size:13px;color:var(--muted);margin:12px 0 4px">Check with the provider:</p>
+    <ul id="providerIssueLinks" style="margin:0 0 16px;padding-left:18px;font-size:14px"></ul>
+    <button id="providerIssueSettingsBtn" type="button">Open Settings</button>
+    <button id="providerIssueCloseBtn" type="button">Close</button>
+  </div>
+</div>
+
 <script>
 (function () {
   "use strict";
@@ -991,6 +1025,7 @@ input:focus, select:focus, textarea:focus {
     show($("parentDashboard"));
     loadGenerationRequests();
     loadCurrentProvider();
+    loadModelSettings();
   }
 
   // ── Generation request list ───────────────────────────────────────────────
@@ -1124,7 +1159,11 @@ input:focus, select:focus, textarea:focus {
           var line = lines[i].trim();
           if (!line.startsWith("data: ")) continue;
           var data = JSON.parse(line.slice(6));
-          if (data.error) throw new Error(data.error);
+          if (data.error) {
+            var failure = new Error(data.error);
+            failure.providerIssue = data.provider_issue || null;
+            throw failure;
+          }
           if (data.step === "sending") {
             steps[0].className = "pstep pstep-active";
           } else if (data.step === "checking") {
@@ -1151,7 +1190,8 @@ input:focus, select:focus, textarea:focus {
       }, 600);
     } catch (e) {
       hide($("genProgress"));
-      alert("Generation failed: " + e.message);
+      if (e.providerIssue) showProviderIssue(e.providerIssue);
+      else alert("Generation failed: " + e.message);
       loadGenerationRequests();
     }
   }
@@ -1476,6 +1516,102 @@ input:focus, select:focus, textarea:focus {
     });
   }
 
+  // ── Model settings and provider issues ───────────────────────────────────
+  var _modelData = null;
+
+  function addLinks(listEl, links) {
+    listEl.textContent = "";
+    links.forEach(function (link) {
+      var li = document.createElement("li");
+      var a = document.createElement("a");
+      a.href = "#";
+      a.textContent = link.label;
+      a.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        fetch("/api/parent/open-link", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Parent-Pin": _parentPin },
+          body: JSON.stringify({ url: link.url }),
+        });
+      });
+      li.appendChild(a);
+      li.appendChild(document.createTextNode(" (" + link.url + ")"));
+      listEl.appendChild(li);
+    });
+  }
+
+  function showProviderFields() {
+    if (!_modelData) return;
+    var key = $("modelProvider").value;
+    var p = _modelData.providers[key];
+    $("modelId").value = p.model;
+    $("modelInCost").value = p.input_cost_per_mtok;
+    $("modelOutCost").value = p.output_cost_per_mtok;
+    $("modelKeyStatus").textContent = p.has_key
+      ? "An API key for " + p.name + " is saved on this computer."
+      : "No API key saved for " + p.name + ". Add one below.";
+    addLinks($("modelLinks"), p.links);
+  }
+
+  async function loadModelSettings() {
+    try {
+      var r = await fetch("/api/parent/settings/model", { headers: { "X-Parent-Pin": _parentPin } });
+      if (!r.ok) return;
+      _modelData = await r.json();
+      var sel = $("modelProvider");
+      sel.textContent = "";
+      Object.keys(_modelData.providers).forEach(function (k) {
+        var o = document.createElement("option");
+        o.value = k;
+        o.textContent = _modelData.providers[k].name;
+        sel.appendChild(o);
+      });
+      if (_modelData.selected) sel.value = _modelData.selected;
+      showProviderFields();
+    } catch (_) {}
+  }
+
+  $("modelProvider").addEventListener("change", showProviderFields);
+
+  $("modelSaveBtn").addEventListener("click", async function () {
+    clearError("modelError");
+    $("modelOk").style.display = "none";
+    try {
+      var r = await fetch("/api/parent/settings/model", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Parent-Pin": _parentPin },
+        body: JSON.stringify({
+          provider: $("modelProvider").value,
+          model: $("modelId").value.trim(),
+          input_cost_per_mtok: parseFloat($("modelInCost").value),
+          output_cost_per_mtok: parseFloat($("modelOutCost").value),
+        }),
+      });
+      if (!r.ok) {
+        var err = await r.json().catch(function () { return {}; });
+        throw new Error(typeof err.detail === "string" ? err.detail : "Check the model and prices.");
+      }
+      $("modelOk").textContent = "Saved.";
+      $("modelOk").style.display = "block";
+      loadCurrentProvider();
+      loadModelSettings();
+    } catch (e) { setError("modelError", e.message); }
+  });
+
+  function showProviderIssue(issue) {
+    $("providerIssueTitle").textContent = issue.kind === "model_unavailable"
+      ? "This AI model is no longer available" : "The AI provider rejected your key";
+    $("providerIssueMsg").textContent = issue.message;
+    addLinks($("providerIssueLinks"), issue.links);
+    show($("providerIssue"));
+  }
+  $("providerIssueCloseBtn").addEventListener("click", function () { hide($("providerIssue")); });
+  $("providerIssueSettingsBtn").addEventListener("click", function () {
+    hide($("providerIssue"));
+    $("parentSettingsDetails").open = true;
+    $("parentSettingsDetails").scrollIntoView();
+  });
+
   // ── Settings panel ───────────────────────────────────────────────────────
   async function loadCurrentProvider() {
     try {
@@ -1507,6 +1643,7 @@ input:focus, select:focus, textarea:focus {
       $("settingsKeyOk").textContent = "Saved. Provider: " + (result.provider === "anthropic" ? "Anthropic" : "Google Gemini");
       $("settingsKeyOk").style.display = "block";
       loadCurrentProvider();
+      loadModelSettings();
     } catch (e) { setError("settingsKeyError", e.message); }
   });
 

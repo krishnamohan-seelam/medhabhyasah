@@ -1,7 +1,7 @@
 """Setup wizard routes — first-run PIN, API key, and first student."""
 from fastapi import APIRouter, Request
 
-from medhabhyasah import credentials
+from medhabhyasah import credentials, model_config
 from medhabhyasah.db import count_students, create_student
 
 from ._shared import ApiKeyRequest, PinRequest, StudentRequest, open_db
@@ -15,7 +15,7 @@ async def setup_status(request: Request) -> dict:
         needs = count_students(conn) == 0
     return {
         "needs_setup": needs,
-        "configured_provider": credentials.configured_provider(),
+        "configured_provider": model_config.selected_provider() or credentials.configured_provider(),
     }
 
 

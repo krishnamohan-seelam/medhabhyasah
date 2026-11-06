@@ -57,3 +57,7 @@ The database directory survives upgrades — reinstalling the app does not touch
 `AppId` in `medhabhyasah.iss` must stay the same across releases so a newer installer upgrades in place. Bump `AppVersion` here and `version` in `pyproject.toml` together.
 
 The installer is not code-signed, so Windows SmartScreen may warn on first run. Choose "More info", then "Run anyway".
+
+## Changing the AI model
+
+The parent picks the provider, model id and token prices in Settings. They are saved in `%APPDATA%\Medhabhyasah\models.json` (no keys in that file). If a provider retires a model or rejects the key, generation stops with a message that links to the provider's model list, deprecation page and key page.

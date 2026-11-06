@@ -3,7 +3,7 @@ import sqlite3
 from pathlib import Path
 
 
-def get_db_path() -> Path:
+def get_data_dir() -> Path:
     import os
     appdata = os.environ.get("APPDATA")
     if appdata:
@@ -11,7 +11,11 @@ def get_db_path() -> Path:
     else:
         data_dir = Path.home() / ".medhabhyasah"
     data_dir.mkdir(parents=True, exist_ok=True)
-    return data_dir / "medhabhyasah.db"
+    return data_dir
+
+
+def get_db_path() -> Path:
+    return get_data_dir() / "medhabhyasah.db"
 
 
 def get_connection(db_path: Path | None = None) -> sqlite3.Connection:

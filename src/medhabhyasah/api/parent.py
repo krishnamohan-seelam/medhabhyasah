@@ -1,11 +1,12 @@
 """Parent-zone routes — auth, settings, approval, generation, oversight, profiles."""
 import asyncio
 import json
+import webbrowser
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
-from medhabhyasah import credentials
+from medhabhyasah import credentials, model_config
 from medhabhyasah.db import (
     create_generation_request,
     create_question,
@@ -25,6 +26,8 @@ from medhabhyasah.db import (
 
 from ._shared import (
     ApiKeyRequest,
+    ModelSettingsRequest,
+    OpenLinkRequest,
     ChangePinRequest,
     GenerationRequest,
     PinRequest,
@@ -54,7 +57,48 @@ async def update_apikey(
     body: ApiKeyRequest, pin: None = Depends(require_pin)
 ) -> dict:
     provider = credentials.store_key_by_prefix(body.api_key)
+    model_config.select_provider(provider)
     return {"ok": True, "provider": provider}
+
+
+@router.get("/api/parent/settings/model")
+async def get_model_settings(pin: None = Depends(require_pin)) -> dict:
+    selected = model_config.selected_provider() or credentials.configured_provider()
+    providers = {}
+    for key, info in model_config.PROVIDERS.items():
+        cfg = model_config.settings_for(key)
+        providers[key] = {
+            "name": info["name"],
+            "model": cfg.model,
+            "input_cost_per_mtok": cfg.input_cost_per_mtok,
+            "output_cost_per_mtok": cfg.output_cost_per_mtok,
+            "default_model": info["model"],
+            "has_key": credentials.has_key_for(key),
+            "links": info["links"],
+        }
+    return {"selected": selected, "providers": providers}
+
+
+@router.post("/api/parent/settings/model")
+async def update_model_settings(
+    body: ModelSettingsRequest, pin: None = Depends(require_pin)
+) -> dict:
+    try:
+        model_config.save(
+            body.provider, body.model, body.input_cost_per_mtok, body.output_cost_per_mtok
+        )
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+    return {"ok": True}
+
+
+@router.post("/api/parent/open-link")
+async def open_link(body: OpenLinkRequest, pin: None = Depends(require_pin)) -> dict:
+    """Open a provider help page in the default browser. Known links only."""
+    if body.url not in model_config.allowed_link_urls():
+        raise HTTPException(400, "Unknown link")
+    webbrowser.open(body.url)
+    return {"ok": True}
 
 
 @router.post("/api/parent/settings/pin")
@@ -184,7 +228,7 @@ async def post_generation_request(
 async def trigger_generation(
     request: Request, req_id: int, pin: None = Depends(require_pin),
 ) -> StreamingResponse:
-    from medhabhyasah.generation import generate_questions
+    from medhabhyasah.generation import ProviderAccessError, generate_questions
     from medhabhyasah.safety import check_difficulty_distribution, check_question
 
     db_path = request.app.state.db_path
@@ -214,7 +258,10 @@ async def trigger_generation(
         except Exception as exc:
             with open_db(db_path) as conn:
                 update_generation_request_status(conn, req_id, "failed")
-            yield f"data: {json.dumps({'error': str(exc)})}\n\n"
+            payload = {"error": str(exc)}
+            if isinstance(exc, ProviderAccessError):
+                payload["provider_issue"] = exc.to_dict()
+            yield f"data: {json.dumps(payload)}\n\n"
             return
 
         yield "data: {\"step\": \"checking\"}\n\n"

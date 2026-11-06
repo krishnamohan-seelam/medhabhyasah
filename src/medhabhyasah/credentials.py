@@ -70,3 +70,19 @@ def configured_provider() -> str | None:
     if keyring.get_password(_SERVICE, _GEMINI_KEY_USER) is not None:
         return "gemini"
     return None
+
+
+def has_key_for(provider: str) -> bool:
+    if provider == "anthropic":
+        return keyring.get_password(_SERVICE, _API_KEY_USER) is not None
+    if provider == "gemini":
+        return keyring.get_password(_SERVICE, _GEMINI_KEY_USER) is not None
+    return False
+
+
+def get_key_for(provider: str) -> str | None:
+    if provider == "anthropic":
+        return get_api_key()
+    if provider == "gemini":
+        return get_gemini_key()
+    return None

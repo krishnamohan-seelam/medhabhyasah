@@ -87,6 +87,17 @@ class ApiKeyRequest(BaseModel):
         return v
 
 
+class ModelSettingsRequest(BaseModel):
+    provider: str
+    model: str
+    input_cost_per_mtok: float | None = None
+    output_cost_per_mtok: float | None = None
+
+
+class OpenLinkRequest(BaseModel):
+    url: str
+
+
 class StudentRequest(BaseModel):
     nickname: str
     grade: str
