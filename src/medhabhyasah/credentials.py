@@ -1,4 +1,6 @@
 """Credential Manager access via keyring. API keys never leave this module."""
+import hmac
+
 import keyring
 
 _SERVICE = "medhabhyasah"
@@ -13,7 +15,7 @@ def store_pin(pin: str) -> None:
 
 def verify_pin(pin: str) -> bool:
     stored = keyring.get_password(_SERVICE, _PIN_USER)
-    return stored is not None and stored == pin
+    return stored is not None and hmac.compare_digest(stored.encode(), pin.encode())
 
 
 def has_pin() -> bool:

@@ -11,6 +11,7 @@ See `packaging/README.md` to build the Windows installer.
 ```powershell
 uv sync --extra dev
 uv run pytest
+uv run --extra dev pip-audit   # check dependencies for known vulnerabilities
 uv run medhabhyasah
 ```
 

@@ -47,6 +47,9 @@ async def get_student_questions(
         )
     for row in rows:
         parse_options(row)
+        # Never send answers before the attempt is submitted.
+        for secret in ("answer", "explanation", "source_quote"):
+            row.pop(secret, None)
     return rows
 
 

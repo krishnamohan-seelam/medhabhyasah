@@ -31,6 +31,7 @@ from ._shared import (
     ChangePinRequest,
     GenerationRequest,
     PinRequest,
+    check_pin,
     QuestionUpdateRequest,
     StudentRequest,
     open_db,
@@ -45,7 +46,7 @@ router = APIRouter(tags=["parent"])
 
 @router.post("/api/parent/verify-pin")
 async def verify_pin(body: PinRequest) -> dict:
-    if not credentials.verify_pin(body.pin):
+    if not check_pin(body.pin):
         raise HTTPException(status_code=401, detail="Incorrect PIN")
     return {"ok": True}
 
@@ -105,7 +106,7 @@ async def open_link(body: OpenLinkRequest, pin: None = Depends(require_pin)) -> 
 async def change_pin(
     body: ChangePinRequest, pin: None = Depends(require_pin)
 ) -> dict:
-    if not credentials.verify_pin(body.current_pin):
+    if not check_pin(body.current_pin):
         raise HTTPException(400, "Current PIN is incorrect")
     if body.new_pin != body.confirm_pin:
         raise HTTPException(400, "PINs do not match")
@@ -228,7 +229,12 @@ async def post_generation_request(
 async def trigger_generation(
     request: Request, req_id: int, pin: None = Depends(require_pin),
 ) -> StreamingResponse:
-    from medhabhyasah.generation import ProviderAccessError, generate_questions
+    from medhabhyasah.generation import (
+        GenerationFailure,
+        ProviderAccessError,
+        failure_from,
+        generate_questions,
+    )
     from medhabhyasah.safety import check_difficulty_distribution, check_question
 
     db_path = request.app.state.db_path
@@ -258,9 +264,13 @@ async def trigger_generation(
         except Exception as exc:
             with open_db(db_path) as conn:
                 update_generation_request_status(conn, req_id, "failed")
-            payload = {"error": str(exc)}
+            # Only fixed, safe messages reach the screen. Anything else is
+            # classified and its detail goes to the scrubbed log file.
             if isinstance(exc, ProviderAccessError):
-                payload["provider_issue"] = exc.to_dict()
+                payload = {"error": str(exc), "provider_issue": exc.to_dict()}
+            else:
+                failure = exc if isinstance(exc, GenerationFailure) else failure_from(exc, "unknown", "unknown")
+                payload = {"error": str(failure), "failure_kind": failure.kind}
             yield f"data: {json.dumps(payload)}\n\n"
             return
 

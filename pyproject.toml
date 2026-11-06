@@ -20,7 +20,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "httpx"]
+dev = [
+    "pytest",
+    "httpx",
+    "pip-audit>=2.10.1",
+]
 package = ["pyinstaller"]
 
 [project.scripts]

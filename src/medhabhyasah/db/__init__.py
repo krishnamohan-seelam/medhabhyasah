@@ -77,6 +77,11 @@ def create_schema(conn: sqlite3.Connection) -> None:
             finished_at           TEXT
         );
 
+        CREATE TABLE IF NOT EXISTS app_meta (
+            key    TEXT PRIMARY KEY,
+            value  TEXT NOT NULL
+        );
+
         CREATE TABLE IF NOT EXISTS attempt_answers (
             id             INTEGER PRIMARY KEY AUTOINCREMENT,
             attempt_id     INTEGER NOT NULL REFERENCES attempts(id),
@@ -102,6 +107,19 @@ def _migrate(conn: sqlite3.Connection) -> None:
     q_cols = {r[1] for r in conn.execute("PRAGMA table_info(questions)")}
     if "check_failure" not in q_cols:
         conn.execute("ALTER TABLE questions ADD COLUMN check_failure TEXT")
+
+
+# ── Setup state ───────────────────────────────────────────────────────────────
+
+def mark_setup_complete(conn: sqlite3.Connection) -> None:
+    conn.execute("INSERT OR REPLACE INTO app_meta (key, value) VALUES ('setup_complete', '1')")
+    conn.commit()
+
+
+def is_setup_complete(conn: sqlite3.Connection) -> bool:
+    """True once first-run setup finished. Deleting every student does not reopen setup."""
+    row = conn.execute("SELECT value FROM app_meta WHERE key = 'setup_complete'").fetchone()
+    return (row is not None and row[0] == "1") or count_students(conn) > 0
 
 
 # ── Students ──────────────────────────────────────────────────────────────────
