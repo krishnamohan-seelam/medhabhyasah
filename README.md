@@ -2,6 +2,16 @@
 
 Medhabhyasah (*medhā* + *abhyāsaḥ*, "practice that sharpens the mind") is a Windows desktop app for exam practice. A parent generates and approves questions with AI help, and a student practises only from the approved set.
 
+## Screenshots
+
+| Student profiles | Choose a quiz |
+| --- | --- |
+| ![Student profiles](docs/screenshots/students.png) | ![Quiz setup](docs/screenshots/quiz-setup.png) |
+| **Taking a quiz** | **Results** |
+| ![Quiz](docs/screenshots/quiz.png) | ![Results](docs/screenshots/results.png) |
+| **Mistakes Notebook** | **Parent zone** |
+| ![Mistakes Notebook](docs/screenshots/mistakes.png) | ![Parent zone](docs/screenshots/parent.png) |
+
 ## Status
 
 See `packaging/README.md` to build the Windows installer.

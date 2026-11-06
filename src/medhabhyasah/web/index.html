@@ -284,8 +284,9 @@ input:focus, select:focus, textarea:focus {
 .quiz-nav-title { font-size: 16px; font-weight: 600; }
 .quiz-h2 { font-size: 22px; font-weight: 700; margin: 0 0 20px; }
 .mode-grid { display: flex; gap: 10px; flex-wrap: wrap; }
-.mode-btn { flex: 1; min-width: 120px; padding: 12px 10px; border: 2px solid var(--line); border-radius: 10px; background: #fff; cursor: pointer; display: flex; flex-direction: column; gap: 4px; text-align: center; }
-.mode-btn:hover { border-color: var(--pen); }
+.mode-btn { flex: 1; min-width: 120px; padding: 12px 10px; border: 2px solid var(--line); border-radius: 10px; background: #fff; cursor: pointer; display: flex; flex-direction: column; gap: 4px; text-align: center; color: var(--ink); }
+.mode-btn:hover { border-color: var(--pen); background: var(--pen-wash); }
+.mode-btn.selected:hover { background: var(--pen-dark); }
 .mode-btn.selected { border-color: var(--pen); background: var(--pen); color: #fff; }
 .mode-name { font-weight: 700; font-size: 15px; }
 .mode-desc { font-size: 12px; opacity: .8; }
@@ -309,7 +310,7 @@ input:focus, select:focus, textarea:focus {
 .results-score { font-size: 28px; font-weight: 700; margin: 8px 0 4px; }
 .results-pct { font-size: 18px; color: var(--muted); }
 .result-row { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
-.result-icon { font-size: 18px; flex-shrink: 0; width: 24px; text-align: center; }
+.result-icon { font-size: 18px; flex-shrink: 0; width: 24px; text-align: center; color: var(--ink); }
 .result-body { flex: 1; }
 .result-question { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
 .result-answer { font-size: 13px; color: var(--muted); }
@@ -319,7 +320,7 @@ input:focus, select:focus, textarea:focus {
 .student-actions { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
 .student-action-btn { display: flex; align-items: center; gap: 16px; padding: 18px 20px; border: 1.5px solid var(--line); border-radius: 12px; background: #fff; cursor: pointer; text-align: left; width: 100%; }
 .student-action-btn:hover { border-color: var(--pen); background: var(--pen-wash,#e8f0fe); }
-.sa-icon { font-size: 22px; flex-shrink: 0; width: 30px; text-align: center; }
+.sa-icon { font-size: 22px; flex-shrink: 0; width: 30px; text-align: center; color: var(--ink); }
 .sa-title { font-size: 16px; font-weight: 700; display: block; }
 .sa-desc { font-size: 13px; color: var(--muted); display: block; margin-top: 2px; }
 .attempt-list { display: flex; flex-direction: column; gap: 10px; }
@@ -328,8 +329,8 @@ input:focus, select:focus, textarea:focus {
 .attempt-topic { font-weight: 600; font-size: 15px; flex: 1; }
 .attempt-grade { font-size: 22px; font-weight: 800; color: var(--pen); width: 28px; }
 .attempt-meta { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
-.btn-practise { font-size: 13px; padding: 5px 12px; background: var(--paper); border: 1.5px solid var(--line); border-radius: 6px; cursor: pointer; }
-.btn-practise:hover { border-color: var(--pen); }
+.btn-practise { font-size: 13px; padding: 5px 12px; background: var(--paper); border: 1.5px solid var(--line); border-radius: 6px; cursor: pointer; color: var(--ink); min-height: 0; }
+.btn-practise:hover { border-color: var(--pen); background: var(--pen-wash); }
 /* Mistakes notebook */
 .mistake-group-title { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin: 20px 0 8px; }
 .mistake-card { border: 1.5px solid #fde8e8; border-radius: 10px; padding: 14px; margin-bottom: 10px; background: #fff; }
@@ -383,7 +384,7 @@ input:focus, select:focus, textarea:focus {
 .btn-secondary:hover { background: var(--paper); border-color: var(--ink); }
 
 /* ── Progress ── */
-.progress-card { text-align: center; }
+.progress-card { text-align: center; color: var(--ink); }
 .progress-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; text-align: left; }
 .pstep {
   padding: 12px 16px; border-radius: 8px;
