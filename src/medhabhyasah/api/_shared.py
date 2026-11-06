@@ -1,5 +1,6 @@
 """Shared models, dependencies, and helpers used across API routers."""
 import json
+import time
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -44,8 +45,39 @@ def get_db_path(request: Request) -> Path | None:
 
 # ── Auth dependency ──────────────────────────────────────────────────────────
 
+_MAX_FAILURES = 5
+_BASE_LOCK_SECONDS = 60
+_MAX_LOCK_SECONDS = 900
+_pin_state = {"failures": 0, "strikes": 0, "locked_until": 0.0}
+
+
+def check_pin(pin: str) -> bool:
+    """Check a PIN with lockout. Raises 429 while locked, so guessing is slow.
+
+    After 5 wrong PINs in a row the app refuses all PIN checks (even a correct
+    one) for 60 seconds, doubling each time up to 15 minutes. A correct PIN
+    resets the counters.
+    """
+    now = time.monotonic()
+    if now < _pin_state["locked_until"]:
+        wait = int(_pin_state["locked_until"] - now) + 1
+        raise HTTPException(
+            status_code=429,
+            detail=f"Too many wrong PINs. Try again in {wait} seconds.",
+            headers={"Retry-After": str(wait)},
+        )
+    if credentials.verify_pin(pin):
+        _pin_state.update(failures=0, strikes=0)
+        return True
+    _pin_state["failures"] += 1
+    if _pin_state["failures"] >= _MAX_FAILURES:
+        lock = min(_BASE_LOCK_SECONDS * 2 ** _pin_state["strikes"], _MAX_LOCK_SECONDS)
+        _pin_state.update(failures=0, strikes=_pin_state["strikes"] + 1, locked_until=now + lock)
+    return False
+
+
 def require_pin(x_parent_pin: str = Header(default="", alias="X-Parent-Pin")) -> None:
-    if not x_parent_pin or not credentials.verify_pin(x_parent_pin):
+    if not x_parent_pin or not check_pin(x_parent_pin):
         raise HTTPException(status_code=401, detail="Invalid or missing PIN")
 
 

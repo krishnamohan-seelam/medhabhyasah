@@ -31,6 +31,7 @@ from ._shared import (
     ChangePinRequest,
     GenerationRequest,
     PinRequest,
+    check_pin,
     QuestionUpdateRequest,
     StudentRequest,
     open_db,
@@ -45,7 +46,7 @@ router = APIRouter(tags=["parent"])
 
 @router.post("/api/parent/verify-pin")
 async def verify_pin(body: PinRequest) -> dict:
-    if not credentials.verify_pin(body.pin):
+    if not check_pin(body.pin):
         raise HTTPException(status_code=401, detail="Incorrect PIN")
     return {"ok": True}
 
@@ -105,7 +106,7 @@ async def open_link(body: OpenLinkRequest, pin: None = Depends(require_pin)) -> 
 async def change_pin(
     body: ChangePinRequest, pin: None = Depends(require_pin)
 ) -> dict:
-    if not credentials.verify_pin(body.current_pin):
+    if not check_pin(body.current_pin):
         raise HTTPException(400, "Current PIN is incorrect")
     if body.new_pin != body.confirm_pin:
         raise HTTPException(400, "PINs do not match")
