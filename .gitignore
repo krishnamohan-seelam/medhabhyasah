@@ -1,6 +1,6 @@
 # Internal documents and scratch work: never committed
 /design/
-/docs/
+
 /.scratch/
 
 # Local data: never commit source books, databases or secrets
