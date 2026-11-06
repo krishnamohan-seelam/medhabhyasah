@@ -197,7 +197,76 @@ def test_social_studies_does_not_require_worked_solution():
     assert result.passed is True
 
 
-# ── Rule 6: Difficulty distribution ─────────────────────────────────────────
+# ── Rule 6: Worked-solution answer must match the chosen option ─────────────
+
+def test_worked_answer_matching_chosen_option_passes():
+    result = check_question(_maths_q(), "Maths")
+    assert result.passed is True
+
+
+def test_worked_answer_mismatching_chosen_option_fails():
+    # answer=1 picks "60 km/h", but the worked solution concludes "120 km/h".
+    q = _maths_q(explanation=(
+        "Given: distance = 60 km, time = 1 h\n"
+        "Formula: speed = distance / time\n"
+        "Substitution: speed = 60 / 1\n"
+        "Answer: 120 km/h"
+    ))
+    result = check_question(q, "Maths")
+    assert result.passed is False
+    assert "60 km/h" in result.failure
+    assert "B" in result.failure
+
+
+def test_worked_answer_matches_despite_unit_text_difference():
+    # Numbers compared numerically, so "60 km/h" vs "60 kmph" still passes.
+    q = _maths_q(explanation=(
+        "Given: distance = 60 km, time = 1 h\n"
+        "Formula: speed = distance / time\n"
+        "Substitution: speed = 60 / 1\n"
+        "Answer: 60 kmph"
+    ))
+    result = check_question(q, "Maths")
+    assert result.passed is True
+
+
+def test_worked_answer_non_numeric_substring_match_passes():
+    q = _maths_q(
+        options=["carbon dioxide", "oxygen", "nitrogen", "hydrogen"],
+        answer=1,
+        explanation=(
+            "Given: plants release gas during photosynthesis\n"
+            "Formula: photosynthesis releases O2\n"
+            "Substitution: observed gas is oxygen\n"
+            "Answer: oxygen gas is released"
+        ),
+    )
+    result = check_question(q, "Science")
+    assert result.passed is True
+
+
+def test_worked_answer_non_numeric_mismatch_fails():
+    q = _maths_q(
+        options=["carbon dioxide", "oxygen", "nitrogen", "hydrogen"],
+        answer=1,
+        explanation=(
+            "Given: plants release gas during photosynthesis\n"
+            "Formula: photosynthesis releases O2\n"
+            "Substitution: observed gas is oxygen\n"
+            "Answer: carbon dioxide is released"
+        ),
+    )
+    result = check_question(q, "Science")
+    assert result.passed is False
+
+
+def test_worked_answer_check_skipped_for_non_maths_science():
+    # Rule only applies to Maths/Science; other subjects are untouched.
+    result = check_question(_base_q(explanation="Because X."), "English")
+    assert result.passed is True
+
+
+# ── Rule 7: Difficulty distribution ─────────────────────────────────────────
 
 def test_good_distribution_returns_none():
     questions = (
@@ -220,7 +289,7 @@ def test_fewer_than_5_no_distribution_check():
     assert check_difficulty_distribution(questions) is None
 
 
-# ── Rule 7: Student routes never import generation ───────────────────────────
+# ── Rule 8: Student routes never import generation ───────────────────────────
 
 def test_generation_not_imported_at_api_module_level():
     """The api module must not import generation at the top level."""
@@ -271,7 +340,7 @@ def test_generation_not_reachable_via_student_routes():
     )
 
 
-# ── Rule 8: API keys never leave generation module ───────────────────────────
+# ── Rule 9: API keys never leave generation module ───────────────────────────
 
 def test_gemini_key_not_returned_in_generation_result():
     """GenerationResult must not contain the Gemini API key."""
