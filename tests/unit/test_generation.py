@@ -77,7 +77,7 @@ def test_generate_questions_cost_calculation(mock_kr, MockAnthropic):
     mock_kr.get_password = MagicMock(return_value="sk-ant-test")
     mock_client = MagicMock()
     MockAnthropic.return_value = mock_client
-    # 1M input tokens → $4.00, 1M output tokens → $20.00
+    # 1M input tokens → $0.10, 1M output tokens → $0.50
     mock_client.messages.create.return_value = _make_response(
         [_VALID_QUESTION], input_tokens=1_000_000, output_tokens=1_000_000
     )
@@ -85,7 +85,7 @@ def test_generate_questions_cost_calculation(mock_kr, MockAnthropic):
     from medhabhyasah.generation import generate_questions
     result = generate_questions("Science", "Cells", "7", "CBSE", "", 1)
 
-    assert abs(result.api_cost_usd - 24.00) < 0.001
+    assert abs(result.api_cost_usd - 0.60) < 0.001
 
 
 @patch("medhabhyasah.generation.anthropic.Anthropic")
@@ -102,7 +102,7 @@ def test_generate_questions_small_cost(mock_kr, MockAnthropic):
     from medhabhyasah.generation import generate_questions
     result = generate_questions("English", "Grammar", "6", "CBSE", "", 1)
 
-    expected = (500 / 1_000_000) * 4.00 + (1000 / 1_000_000) * 20.00
+    expected = (500 / 1_000_000) * 0.10 + (1000 / 1_000_000) * 0.50
     assert abs(result.api_cost_usd - expected) < 1e-9
 
 
@@ -452,7 +452,7 @@ def test_generate_questions_openai_cost_calculation(mock_kr, MockOpenAI):
     ))
     mock_client = MagicMock()
     MockOpenAI.return_value = mock_client
-    # 1M input → $1.25, 1M output → $10.00 → total $11.25
+    # 1M input → $0.15, 1M output → $0.60 → total $0.75
     mock_client.chat.completions.create.return_value = _make_openai_response(
         [_VALID_QUESTION], input_tokens=1_000_000, output_tokens=1_000_000
     )
@@ -460,7 +460,7 @@ def test_generate_questions_openai_cost_calculation(mock_kr, MockOpenAI):
     from medhabhyasah.generation import generate_questions
     result = generate_questions("Science", "Cells", "7", "CBSE", "", 1)
 
-    assert abs(result.api_cost_usd - 11.25) < 0.001
+    assert abs(result.api_cost_usd - 0.75) < 0.001
 
 
 def test_generate_route_openai_dispatch(tmp_path: Path):

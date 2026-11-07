@@ -14,9 +14,9 @@ from medhabhyasah.db import get_data_dir
 PROVIDERS: dict[str, dict] = {
     "anthropic": {
         "name": "Anthropic",
-        "model": "claude-opus-5-5",
-        "input_cost_per_mtok": 4.00,
-        "output_cost_per_mtok": 20.00,
+        "model": "claude-haiku-5-5",
+        "input_cost_per_mtok": 0.10,
+        "output_cost_per_mtok": 0.50,
         "links": [
             {"label": "Anthropic model list",
              "url": "https://docs.anthropic.com/en/docs/about-claude/models"},
@@ -28,9 +28,9 @@ PROVIDERS: dict[str, dict] = {
     },
     "openai": {
         "name": "OpenAI",
-        "model": "gpt-5.1",
-        "input_cost_per_mtok": 1.25,
-        "output_cost_per_mtok": 10.00,
+        "model": "gpt-4o-mini",
+        "input_cost_per_mtok": 0.15,
+        "output_cost_per_mtok": 0.60,
         "links": [
             {"label": "OpenAI model list",
              "url": "https://platform.openai.com/docs/models"},
