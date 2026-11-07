@@ -249,10 +249,29 @@ input:focus, select:focus, textarea:focus {
 .aq-summary { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; font-size: 13px; }
 .aq-count { padding: 3px 10px; border-radius: 20px; font-weight: 600; }
 .aq-cards { display: flex; flex-direction: column; gap: 16px; }
-.q-card { border: 1.5px solid var(--line); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.q-card { border: 1.5px solid var(--line); border-radius: 10px; padding: 16px; display: block; }
 .q-card.q-approved { border-color: #a5d6a7; background: #f1f8f1; }
 .q-card.q-rejected { border-color: #ef9a9a; background: #fdf3f3; opacity: .75; }
 .q-card-top { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.q-card-summary {
+  cursor: pointer; list-style: none; display: flex; gap: 8px; align-items: center;
+  flex-wrap: nowrap; user-select: none;
+}
+.q-card-summary::-webkit-details-marker { display: none; }
+.q-card-summary::before {
+  content: "▸"; color: var(--muted); font-size: 12px; flex-shrink: 0;
+  transition: transform .1s;
+}
+.q-card[open] > .q-card-summary::before { transform: rotate(90deg); }
+.q-card-summary-text {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; font-size: 14px; color: var(--ink);
+}
+.q-undo-inline-btn {
+  padding: 4px 10px; font-size: 12px; color: var(--muted); background: #fff;
+  border: 1px solid var(--line); border-radius: 6px; cursor: pointer; flex-shrink: 0;
+}
+.q-card-body { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
 .badge-auto_checked { background: #e8f4fd; color: #1565c0; }
 .badge-approved { background: #d4edda; color: #155724; }
 .badge-rejected { background: var(--bad-wash); color: var(--bad); }
@@ -1254,14 +1273,30 @@ input:focus, select:focus, textarea:focus {
 
   $("aqBackBtn").addEventListener("click", hideApprovalQueue);
 
-  $("approveAllBtn").addEventListener("click", async function () {
-    var cards = Array.from($("aqCards").querySelectorAll(".q-card"));
-    var pending = cards.filter(function (c) {
-      var badge = c.querySelector(".req-badge");
-      return badge && badge.textContent !== "approved";
+  function pendingCards() {
+    // "Pending" = not yet decided by the parent. Deliberately excludes
+    // "rejected" so Approve All never overturns an explicit rejection.
+    return Array.from($("aqCards").querySelectorAll(".q-card")).filter(function (c) {
+      return c.dataset.status === "draft" || c.dataset.status === "auto_checked";
     });
+  }
+
+  function updateApproveAllBtn() {
+    var btn = $("approveAllBtn");
+    var pending = pendingCards().length;
+    if (pending === 0) {
+      btn.textContent = "✓ All reviewed";
+      btn.disabled = true;
+    } else {
+      btn.textContent = "Approve All (" + pending + ")";
+      btn.disabled = false;
+    }
+  }
+
+  $("approveAllBtn").addEventListener("click", async function () {
+    var pending = pendingCards();
     if (pending.length === 0) return;
-    if (!confirm("Approve all " + pending.length + " non-approved question(s)?")) return;
+    if (!confirm("Approve all " + pending.length + " unreviewed question(s)?")) return;
     this.disabled = true;
     var errors = 0;
     await Promise.all(pending.map(async function (card) {
@@ -1271,13 +1306,11 @@ input:focus, select:focus, textarea:focus {
           method: "POST", headers: { "X-Parent-Pin": _parentPin },
         });
         if (!r.ok) { errors++; return; }
-        var badge = card.querySelector(".req-badge");
-        if (badge) { badge.className = "req-badge badge-approved"; badge.textContent = "approved"; }
-        card.className = "q-card q-approved";
+        card.applyStatus("approved");
       } catch (_) { errors++; }
     }));
-    this.disabled = false;
     renderApprovalSummary(collectCurrentStatuses());
+    updateApproveAllBtn();
     if (errors > 0) alert(errors + " question(s) could not be approved.");
   });
 
@@ -1295,6 +1328,7 @@ input:focus, select:focus, textarea:focus {
       questions.forEach(function (q) {
         container.appendChild(renderQuestionCard(q));
       });
+      updateApproveAllBtn();
     } catch (e) {
       container.textContent = "Failed to load questions: " + e.message;
     }
@@ -1321,47 +1355,71 @@ input:focus, select:focus, textarea:focus {
   }
 
   function renderQuestionCard(q) {
-    var card = document.createElement("div");
+    var decided = q.status === "approved" || q.status === "rejected";
+    var card = document.createElement("details");
     card.className = "q-card" + (q.status === "approved" ? " q-approved" : q.status === "rejected" ? " q-rejected" : "");
     card.dataset.qid = q.id;
+    card.dataset.status = q.status;
+    card.open = !decided;
 
-    // Top row: status badge + difficulty
-    var top = document.createElement("div");
-    top.className = "q-card-top";
+    // Summary row: status badge + difficulty + truncated question — always
+    // visible. Click toggles the full editable card open/closed. Decided
+    // questions start collapsed so the parent only scrolls past what's left.
+    var summary = document.createElement("summary");
+    summary.className = "q-card-summary";
     var badge = document.createElement("span");
     badge.className = "req-badge badge-" + q.status;
     badge.textContent = q.status.replace("_", " ");
     var diff = document.createElement("span");
     diff.className = "req-badge q-diff";
     diff.textContent = q.difficulty;
-    top.appendChild(badge);
-    top.appendChild(diff);
-    card.appendChild(top);
+    var summaryText = document.createElement("span");
+    summaryText.className = "q-card-summary-text";
+    summaryText.textContent = q.question;
+    summary.appendChild(badge);
+    summary.appendChild(diff);
+    summary.appendChild(summaryText);
+    var inlineUndo = document.createElement("button");
+    inlineUndo.type = "button";
+    inlineUndo.className = "q-undo-inline-btn";
+    inlineUndo.textContent = "Undo";
+    inlineUndo.style.display = decided ? "" : "none";
+    inlineUndo.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      undoStatus();
+    });
+    summary.appendChild(inlineUndo);
+    card.appendChild(summary);
+
+    var body = document.createElement("div");
+    body.className = "q-card-body";
+    card.appendChild(body);
 
     // Auto-check failure
     if (q.check_failure) {
       var warn = document.createElement("div");
       warn.className = "q-check-fail";
       warn.textContent = "⚠ Auto-check: " + q.check_failure;
-      card.appendChild(warn);
+      body.appendChild(warn);
     }
 
     // Question textarea
     var qLbl = document.createElement("label");
     qLbl.className = "field-label";
     qLbl.textContent = "Question";
-    card.appendChild(qLbl);
+    body.appendChild(qLbl);
     var qArea = document.createElement("textarea");
     qArea.className = "q-field";
     qArea.rows = 3;
     qArea.value = q.question;
-    card.appendChild(qArea);
+    body.appendChild(qArea);
 
     // Options
     var optLbl = document.createElement("label");
     optLbl.className = "field-label";
     optLbl.textContent = "Options (highlight correct answer below)";
-    card.appendChild(optLbl);
+    body.appendChild(optLbl);
     var optGrid = document.createElement("div");
     optGrid.className = "q-opt-grid";
     var ansIdx = typeof q.answer === "number" ? q.answer : parseInt(q.answer, 10);
@@ -1381,13 +1439,13 @@ input:focus, select:focus, textarea:focus {
       row.appendChild(inp);
       optGrid.appendChild(row);
     });
-    card.appendChild(optGrid);
+    body.appendChild(optGrid);
 
     // Correct answer selector
     var ansLbl = document.createElement("label");
     ansLbl.className = "field-label";
     ansLbl.textContent = "Correct answer";
-    card.appendChild(ansLbl);
+    body.appendChild(ansLbl);
     var ansSel = document.createElement("select");
     ansSel.className = "q-answer-select";
     letters.forEach(function (l, i) {
@@ -1403,25 +1461,25 @@ input:focus, select:focus, textarea:focus {
         r.className = "q-opt-row" + (i === newIdx ? " q-correct" : "");
       });
     });
-    card.appendChild(ansSel);
+    body.appendChild(ansSel);
 
     // Explanation textarea
     var expLbl = document.createElement("label");
     expLbl.className = "field-label";
     expLbl.textContent = "Explanation";
-    card.appendChild(expLbl);
+    body.appendChild(expLbl);
     var expArea = document.createElement("textarea");
     expArea.className = "q-field";
     expArea.rows = 3;
     expArea.value = q.explanation || "";
-    card.appendChild(expArea);
+    body.appendChild(expArea);
 
     // Source quote (read-only)
     if (q.source_quote) {
       var sq = document.createElement("p");
       sq.className = "q-source";
       sq.textContent = "Source: " + q.source_quote;
-      card.appendChild(sq);
+      body.appendChild(sq);
     }
 
     // Button row
@@ -1440,6 +1498,19 @@ input:focus, select:focus, textarea:focus {
       };
     }
 
+    function applyStatus(newStatus) {
+      var isDecided = newStatus === "approved" || newStatus === "rejected";
+      q.status = newStatus;
+      card.dataset.status = newStatus;
+      card.className = "q-card" + (newStatus === "approved" ? " q-approved" : newStatus === "rejected" ? " q-rejected" : "");
+      card.open = !isDecided;
+      badge.className = "req-badge badge-" + newStatus;
+      badge.textContent = newStatus.replace("_", " ");
+      inlineUndo.style.display = isDecided ? "" : "none";
+      rebuildBtns();
+    }
+    card.applyStatus = applyStatus;
+
     async function saveAndSetStatus(newStatus) {
       msgEl.textContent = "Saving…";
       try {
@@ -1453,13 +1524,11 @@ input:focus, select:focus, textarea:focus {
           method: "POST",
           headers: { "X-Parent-Pin": _parentPin },
         }).then(function (r) { if (!r.ok) throw new Error("Status update failed"); });
-        q.status = newStatus;
-        card.className = "q-card" + (newStatus === "approved" ? " q-approved" : newStatus === "rejected" ? " q-rejected" : "");
-        badge.className = "req-badge badge-" + newStatus;
-        badge.textContent = newStatus;
-        msgEl.textContent = newStatus === "approved" ? "✓ Approved" : "✓ Rejected";
-        rebuildBtns();
+        var resolvedStatus = newStatus === "approve" ? "approved" : "rejected";
+        applyStatus(resolvedStatus);
+        msgEl.textContent = resolvedStatus === "approved" ? "✓ Approved" : "✓ Rejected";
         renderApprovalSummary(collectCurrentStatuses());
+        updateApproveAllBtn();
       } catch (e) { msgEl.textContent = e.message; }
     }
 
@@ -1469,13 +1538,10 @@ input:focus, select:focus, textarea:focus {
         var r = await fetch("/api/parent/questions/" + q.id + "/undo", {
           method: "POST", headers: { "X-Parent-Pin": _parentPin },
         }).then(function (r2) { if (!r2.ok) throw new Error("Undo failed"); return r2.json(); });
-        q.status = r.status;
-        card.className = "q-card";
-        badge.className = "req-badge badge-" + r.status;
-        badge.textContent = r.status.replace("_", " ");
+        applyStatus(r.status);
         msgEl.textContent = "";
-        rebuildBtns();
         renderApprovalSummary(collectCurrentStatuses());
+        updateApproveAllBtn();
       } catch (e) { msgEl.textContent = e.message; }
     }
 
@@ -1506,14 +1572,13 @@ input:focus, select:focus, textarea:focus {
     }
 
     rebuildBtns();
-    card.appendChild(btnRow);
+    body.appendChild(btnRow);
     return card;
   }
 
   function collectCurrentStatuses() {
     return Array.from($("aqCards").querySelectorAll(".q-card")).map(function (c) {
-      var b = c.querySelector(".req-badge");
-      return { status: b ? b.textContent.replace(" ", "_") : "draft" };
+      return { status: c.dataset.status || "draft" };
     });
   }
 
