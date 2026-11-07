@@ -18,6 +18,9 @@ _INDEX_PATH = _WEB_DIR / "index.html"
 def create_app(db_path: Path | None = None) -> FastAPI:
     app = FastAPI(title="Medhabhyasah")
     app.state.db_path = db_path
+    # Set by __main__.py once the pywebview window exists, so parent routes
+    # can show native OS dialogs (e.g. the export Save As picker).
+    app.state.webview_window = None
 
     # Refuse any Host other than this machine. Blocks DNS rebinding, where a
     # web page makes the browser talk to this local server under its own name.

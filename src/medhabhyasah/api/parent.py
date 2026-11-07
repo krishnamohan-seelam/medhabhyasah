@@ -2,11 +2,13 @@
 import asyncio
 import json
 import webbrowser
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
+from webview import FileDialog
 
-from medhabhyasah import credentials, model_config
+from medhabhyasah import credentials, export, model_config
 from medhabhyasah.db import (
     create_generation_request,
     create_question,
@@ -328,6 +330,47 @@ async def get_request_questions(
     for row in rows:
         parse_options(row)
     return rows
+
+
+@router.post("/api/parent/generation-requests/{req_id}/export-html")
+def export_request_html(
+    request: Request, req_id: int, pin: None = Depends(require_pin),
+) -> dict:
+    """Render the batch's approved questions as a printable worksheet, let the
+    parent pick where to save it via a native dialog, then open it to print.
+
+    A plain `def` so FastAPI runs it in a worker thread — create_file_dialog
+    blocks until the parent closes the dialog.
+    """
+    with open_db(request.app.state.db_path) as conn:
+        req = get_generation_request(conn, req_id)
+        if req is None:
+            raise HTTPException(404, "Generation request not found")
+        rows = list_questions(conn, generation_request_id=req_id)
+    for row in rows:
+        parse_options(row)
+    approved = [row for row in rows if row["status"] == "approved"]
+    if not approved:
+        raise HTTPException(400, "No approved questions to export yet")
+
+    html_doc = export.render_worksheet_html(req, approved)
+
+    window = request.app.state.webview_window
+    if window is None:
+        raise HTTPException(500, "No window available to show the save dialog")
+    result = window.create_file_dialog(
+        FileDialog.SAVE,
+        save_filename=f"{export.slugify(req['topic'])}.html",
+        file_types=("HTML Files (*.html)",),
+    )
+    if not result:
+        return {"ok": True, "cancelled": True}
+
+    save_path = result[0]
+    with open(save_path, "w", encoding="utf-8") as f:
+        f.write(html_doc)
+    webbrowser.open(Path(save_path).as_uri())
+    return {"ok": True, "cancelled": False}
 
 
 # ── Student oversight ────────────────────────────────────────────────────────
