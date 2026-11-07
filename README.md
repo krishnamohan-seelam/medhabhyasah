@@ -39,3 +39,7 @@ uv run medhabhyasah
 | `tests/` | Unit and safety tests |
 | `packaging/` | PyInstaller and Inno Setup files |
 | `scripts/` | Developer scripts |
+
+## License
+
+[MIT](LICENSE)
