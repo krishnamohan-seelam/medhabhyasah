@@ -17,8 +17,7 @@ def _find_free_port() -> int:
         return s.getsockname()[1]
 
 
-def _run_server(port: int) -> None:
-    app = create_app()
+def _run_server(app, port: int) -> None:
     uvicorn.run(app, host="127.0.0.1", port=port, log_level="error")
 
 
@@ -38,22 +37,26 @@ def main() -> None:
     create_schema(conn)
     conn.close()
 
+    app = create_app()
     port = _find_free_port()
     server_thread = threading.Thread(
-        target=_run_server, args=(port,), daemon=True
+        target=_run_server, args=(app, port), daemon=True
     )
     server_thread.start()
 
     url = f"http://127.0.0.1:{port}"
     _wait_for_server(url)
 
-    webview.create_window(
+    window = webview.create_window(
         "Medhabhyasah",
         url,
         width=1200,
         height=820,
         min_size=(800, 600),
     )
+    # Lets parent routes (e.g. export) show native OS dialogs on this window
+    # from the server thread; pywebview marshals such calls to the GUI thread.
+    app.state.webview_window = window
     webview.start()
 
 

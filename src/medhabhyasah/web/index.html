@@ -711,9 +711,11 @@ input:focus, select:focus, textarea:focus {
       <div class="aq-header">
         <button id="aqBackBtn" type="button">&#x2190; Back</button>
         <span id="aqTitle" class="aq-title"></span>
-        <button id="approveAllBtn" type="button" style="margin-left:auto">Approve All</button>
+        <button id="aqExportBtn" type="button" style="margin-left:auto">Export / Print</button>
+        <button id="approveAllBtn" type="button">Approve All</button>
       </div>
       <div id="aqSummary" class="aq-summary"></div>
+      <div id="aqExportMsg" class="q-msg" style="margin-bottom:8px"></div>
       <div id="aqCards" class="aq-cards"></div>
     </div>
 
@@ -1293,6 +1295,33 @@ input:focus, select:focus, textarea:focus {
     }
   }
 
+  function approvedCount() {
+    return Array.from($("aqCards").querySelectorAll(".q-card")).filter(function (c) {
+      return c.dataset.status === "approved";
+    }).length;
+  }
+
+  function updateExportBtn() {
+    $("aqExportBtn").disabled = approvedCount() === 0;
+  }
+
+  $("aqExportBtn").addEventListener("click", async function () {
+    var msg = $("aqExportMsg");
+    msg.textContent = "";
+    this.disabled = true;
+    try {
+      var r = await fetch("/api/parent/generation-requests/" + _aqReqId + "/export-html", {
+        method: "POST", headers: { "X-Parent-Pin": _parentPin },
+      });
+      var data = await r.json().catch(function () { return {}; });
+      if (!r.ok) throw new Error(data.detail || "Export failed");
+      if (!data.cancelled) msg.textContent = "✓ Exported — opened for printing";
+    } catch (e) {
+      msg.textContent = e.message;
+    }
+    updateExportBtn();
+  });
+
   $("approveAllBtn").addEventListener("click", async function () {
     var pending = pendingCards();
     if (pending.length === 0) return;
@@ -1311,6 +1340,7 @@ input:focus, select:focus, textarea:focus {
     }));
     renderApprovalSummary(collectCurrentStatuses());
     updateApproveAllBtn();
+    updateExportBtn();
     if (errors > 0) alert(errors + " question(s) could not be approved.");
   });
 
@@ -1329,6 +1359,7 @@ input:focus, select:focus, textarea:focus {
         container.appendChild(renderQuestionCard(q));
       });
       updateApproveAllBtn();
+      updateExportBtn();
     } catch (e) {
       container.textContent = "Failed to load questions: " + e.message;
     }
@@ -1529,6 +1560,7 @@ input:focus, select:focus, textarea:focus {
         msgEl.textContent = resolvedStatus === "approved" ? "✓ Approved" : "✓ Rejected";
         renderApprovalSummary(collectCurrentStatuses());
         updateApproveAllBtn();
+        updateExportBtn();
       } catch (e) { msgEl.textContent = e.message; }
     }
 
@@ -1542,6 +1574,7 @@ input:focus, select:focus, textarea:focus {
         msgEl.textContent = "";
         renderApprovalSummary(collectCurrentStatuses());
         updateApproveAllBtn();
+        updateExportBtn();
       } catch (e) { msgEl.textContent = e.message; }
     }
 
