@@ -9,6 +9,11 @@ description = "Exam practice from parent-approved questions"
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [{ name = "Krishna Mohan Seelam" }]
+license = "MIT"
+license-files = ["LICENSE"]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+]
 dependencies = [
     "anthropic",
     "google-genai",
