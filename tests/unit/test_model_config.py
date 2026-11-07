@@ -114,6 +114,24 @@ def test_rejected_anthropic_key_raises_key_rejected():
     assert info.value.kind == "key_rejected"
 
 
+def test_openai_404_raises_model_unavailable():
+    import openai
+    request = httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
+    response = httpx.Response(404, request=request)
+    err = openai.NotFoundError("boom", response=response, body=None)
+    kr = MagicMock()
+    kr.get_password = MagicMock(side_effect=lambda s, u: {
+        "openai-api-key": "sk-fakeOpenAiKey", "parent-pin": "1234"}.get(u))
+    with patch("medhabhyasah.generation.openai.OpenAI") as MockO, \
+            patch("medhabhyasah.credentials.keyring", kr):
+        MockO.return_value.chat.completions.create.side_effect = err
+        from medhabhyasah.generation import ProviderAccessError, generate_questions
+        with pytest.raises(ProviderAccessError) as info:
+            generate_questions("Maths", "Algebra", "9", "CBSE", "", 1)
+    assert info.value.kind == "model_unavailable"
+    assert info.value.provider == "openai"
+
+
 def test_gemini_404_raises_model_unavailable():
     class ClientError(Exception):
         code = 404

@@ -19,6 +19,7 @@ _REDACTED = "[redacted]"
 
 _KEY_PATTERNS = [
     re.compile(r"sk-ant-[A-Za-z0-9_\-]+"),
+    re.compile(r"sk-[A-Za-z0-9_\-]{20,}"),
     re.compile(r"AIza[0-9A-Za-z_\-]{20,}"),
     re.compile(r"(?i)bearer\s+[A-Za-z0-9._\-]{8,}"),
     re.compile(r"(?i)(x-api-key|x-goog-api-key|authorization|api[_-]?key)(['\"]?\s*[:=]\s*['\"]?)[^\s'\",}]+"),
@@ -27,7 +28,7 @@ _KEY_PATTERNS = [
 
 def _stored_secrets() -> list[str]:
     secrets = []
-    for getter in (credentials.get_api_key, credentials.get_gemini_key):
+    for getter in (credentials.get_api_key, credentials.get_openai_key, credentials.get_gemini_key):
         try:
             value = getter()
         except Exception:
@@ -41,9 +42,9 @@ def scrub(text: str) -> str:
     """Remove stored keys and key-shaped strings, then cap the length."""
     for secret in _stored_secrets():
         text = text.replace(secret, _REDACTED)
-    for pattern in _KEY_PATTERNS[:3]:
+    for pattern in _KEY_PATTERNS[:4]:
         text = pattern.sub(_REDACTED, text)
-    text = _KEY_PATTERNS[3].sub(lambda m: m.group(1) + m.group(2) + _REDACTED, text)
+    text = _KEY_PATTERNS[4].sub(lambda m: m.group(1) + m.group(2) + _REDACTED, text)
     if len(text) > _MAX_CHARS:
         text = text[:_MAX_CHARS] + " …[truncated]"
     return text

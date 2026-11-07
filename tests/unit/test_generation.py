@@ -392,3 +392,106 @@ def test_generate_questions_no_key_raises(mock_kr):
     from medhabhyasah.generation import generate_questions
     with pytest.raises(RuntimeError, match="No API key"):
         generate_questions("Maths", "Algebra", "9", "CBSE", "", 5)
+
+
+# ── OpenAI dispatch tests ─────────────────────────────────────────────────────
+
+def _dual_keyring_mock_openai(pin="1234", api_key="sk-fakeOpenAiKey"):
+    """Keyring mock that routes to the OpenAI key slot."""
+    mock_kr = MagicMock()
+
+    def _get(service, user):
+        if user == "parent-pin":
+            return pin
+        if user == "openai-api-key":
+            return api_key
+        return None
+
+    mock_kr.get_password = MagicMock(side_effect=_get)
+    mock_kr.set_password = MagicMock()
+    return mock_kr
+
+
+def _make_openai_response(questions: list[dict], input_tokens=1000, output_tokens=500):
+    """Build a fake openai.OpenAI().chat.completions.create() return value."""
+    message = MagicMock()
+    message.content = json.dumps(questions)
+    choice = MagicMock()
+    choice.message = message
+    response = MagicMock()
+    response.choices = [choice]
+    usage = MagicMock()
+    usage.prompt_tokens = input_tokens
+    usage.completion_tokens = output_tokens
+    response.usage = usage
+    return response
+
+
+@patch("medhabhyasah.generation.openai.OpenAI")
+@patch("medhabhyasah.credentials.keyring")
+def test_generate_questions_openai_dispatch(mock_kr, MockOpenAI):
+    mock_kr.get_password = MagicMock(side_effect=lambda s, u: (
+        "sk-fakeOpenAiKey" if u == "openai-api-key" else None
+    ))
+    mock_client = MagicMock()
+    MockOpenAI.return_value = mock_client
+    mock_client.chat.completions.create.return_value = _make_openai_response([_VALID_QUESTION] * 3)
+
+    from medhabhyasah.generation import generate_questions
+    result = generate_questions("Maths", "Algebra", "9", "CBSE", "", 3)
+
+    assert len(result.questions) == 3
+    mock_client.chat.completions.create.assert_called_once()
+
+
+@patch("medhabhyasah.generation.openai.OpenAI")
+@patch("medhabhyasah.credentials.keyring")
+def test_generate_questions_openai_cost_calculation(mock_kr, MockOpenAI):
+    mock_kr.get_password = MagicMock(side_effect=lambda s, u: (
+        "sk-fakeOpenAiKey" if u == "openai-api-key" else None
+    ))
+    mock_client = MagicMock()
+    MockOpenAI.return_value = mock_client
+    # 1M input → $1.25, 1M output → $10.00 → total $11.25
+    mock_client.chat.completions.create.return_value = _make_openai_response(
+        [_VALID_QUESTION], input_tokens=1_000_000, output_tokens=1_000_000
+    )
+
+    from medhabhyasah.generation import generate_questions
+    result = generate_questions("Science", "Cells", "7", "CBSE", "", 1)
+
+    assert abs(result.api_cost_usd - 11.25) < 0.001
+
+
+def test_generate_route_openai_dispatch(tmp_path: Path):
+    from medhabhyasah.api import create_app
+    app = create_app(db_path=tmp_path / "test.db")
+    c = TestClient(app)
+
+    with (
+        patch("medhabhyasah.generation.openai.OpenAI") as MockOpenAI,
+        patch("medhabhyasah.credentials.keyring", _dual_keyring_mock_openai()),
+    ):
+        mock_client = MagicMock()
+        MockOpenAI.return_value = mock_client
+        mock_client.chat.completions.create.return_value = _make_openai_response(
+            [_VALID_MATHS_Q] * 3, input_tokens=1000, output_tokens=500
+        )
+
+        r_create = c.post(
+            "/api/parent/generation-requests",
+            json={"subject": "Maths", "topic": "Speed", "grade": "7",
+                  "exam": "CBSE", "question_count": 3},
+            headers={"X-Parent-Pin": "1234"},
+        )
+        req_id = r_create.json()["id"]
+
+        r = c.post(
+            f"/api/parent/generation-requests/{req_id}/generate",
+            headers={"X-Parent-Pin": "1234"},
+        )
+
+    assert r.status_code == 200
+    body = _parse_sse_done(r)
+    assert body["question_count"] == 3
+    assert body["api_cost_usd"] > 0

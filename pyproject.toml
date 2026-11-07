@@ -12,6 +12,7 @@ authors = [{ name = "Krishna Mohan Seelam" }]
 dependencies = [
     "anthropic",
     "google-genai",
+    "openai",
     "fastapi",
     "keyring",
     "pydantic>=2",

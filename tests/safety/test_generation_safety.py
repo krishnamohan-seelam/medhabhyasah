@@ -315,6 +315,48 @@ def test_gemini_key_not_returned_in_generation_result():
     assert gemini_key not in result_str, "Gemini API key must not appear in GenerationResult"
 
 
+def test_openai_key_not_returned_in_generation_result():
+    """GenerationResult must not contain the OpenAI API key."""
+    import json
+    from unittest.mock import MagicMock, patch
+
+    openai_key = "sk-fakeOpenAiSecretKey12345"
+
+    def _get(service, user):
+        if user == "openai-api-key":
+            return openai_key
+        return None
+
+    mock_kr = MagicMock()
+    mock_kr.get_password = MagicMock(side_effect=_get)
+
+    message = MagicMock()
+    message.content = json.dumps([_base_q()])
+    choice = MagicMock()
+    choice.message = message
+    mock_response = MagicMock()
+    mock_response.choices = [choice]
+    usage = MagicMock()
+    usage.prompt_tokens = 100
+    usage.completion_tokens = 200
+    mock_response.usage = usage
+
+    mock_openai_client = MagicMock()
+    mock_openai_client.chat.completions.create.return_value = mock_response
+    MockOpenAI = MagicMock(return_value=mock_openai_client)
+
+    with (
+        patch("medhabhyasah.generation.openai.OpenAI", MockOpenAI),
+        patch("medhabhyasah.credentials.keyring", mock_kr),
+    ):
+        from medhabhyasah.generation import GenerationResult, generate_questions
+        result = generate_questions("Maths", "Algebra", "9", "CBSE", "", 1)
+
+    assert isinstance(result, GenerationResult)
+    result_str = json.dumps({"questions": result.questions, "cost": result.api_cost_usd})
+    assert openai_key not in result_str, "OpenAI API key must not appear in GenerationResult"
+
+
 def test_anthropic_key_not_returned_in_generation_result():
     """GenerationResult must not contain the Anthropic API key."""
     import json

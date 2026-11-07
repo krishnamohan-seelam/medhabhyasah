@@ -26,6 +26,20 @@ PROVIDERS: dict[str, dict] = {
              "url": "https://console.anthropic.com/settings/keys"},
         ],
     },
+    "openai": {
+        "name": "OpenAI",
+        "model": "gpt-5.1",
+        "input_cost_per_mtok": 1.25,
+        "output_cost_per_mtok": 10.00,
+        "links": [
+            {"label": "OpenAI model list",
+             "url": "https://platform.openai.com/docs/models"},
+            {"label": "OpenAI deprecations",
+             "url": "https://platform.openai.com/docs/deprecations"},
+            {"label": "OpenAI API keys",
+             "url": "https://platform.openai.com/api-keys"},
+        ],
+    },
     "gemini": {
         "name": "Google Gemini",
         "model": "gemini-3.8-flash",

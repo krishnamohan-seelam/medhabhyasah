@@ -114,8 +114,10 @@ class ApiKeyRequest(BaseModel):
     @field_validator("api_key")
     @classmethod
     def key_format(cls, v: str) -> str:
-        if not (v.startswith("sk-ant-") or v.startswith("AIza")):
-            raise ValueError("API key must start with sk-ant- (Anthropic) or AIza (Google Gemini)")
+        if not (v.startswith("sk-ant-") or v.startswith("sk-") or v.startswith("AIza")):
+            raise ValueError(
+                "API key must start with sk-ant- (Anthropic), sk- (OpenAI), or AIza (Google Gemini)"
+            )
         return v
 
 
