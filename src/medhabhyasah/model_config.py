@@ -14,9 +14,9 @@ from medhabhyasah.db import get_data_dir
 PROVIDERS: dict[str, dict] = {
     "anthropic": {
         "name": "Anthropic",
-        "model": "claude-opus-5-5",
-        "input_cost_per_mtok": 4.00,
-        "output_cost_per_mtok": 20.00,
+        "model": "claude-haiku-5-5",
+        "input_cost_per_mtok": 0.10,
+        "output_cost_per_mtok": 0.50,
         "links": [
             {"label": "Anthropic model list",
              "url": "https://docs.anthropic.com/en/docs/about-claude/models"},
@@ -24,6 +24,20 @@ PROVIDERS: dict[str, dict] = {
              "url": "https://docs.anthropic.com/en/docs/about-claude/model-deprecations"},
             {"label": "Anthropic API keys",
              "url": "https://console.anthropic.com/settings/keys"},
+        ],
+    },
+    "openai": {
+        "name": "OpenAI",
+        "model": "gpt-4o-mini",
+        "input_cost_per_mtok": 0.15,
+        "output_cost_per_mtok": 0.60,
+        "links": [
+            {"label": "OpenAI model list",
+             "url": "https://platform.openai.com/docs/models"},
+            {"label": "OpenAI deprecations",
+             "url": "https://platform.openai.com/docs/deprecations"},
+            {"label": "OpenAI API keys",
+             "url": "https://platform.openai.com/api-keys"},
         ],
     },
     "gemini": {

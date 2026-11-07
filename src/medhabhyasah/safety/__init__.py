@@ -4,6 +4,7 @@ Each check enforces one rule from AGENTS.md. A question that passes all
 checks is stored with status 'auto_checked'; one that fails is stored as
 'draft' with the failure reason in check_failure.
 """
+import re
 from dataclasses import dataclass
 
 _REQUIRED_FIELDS = frozenset(
@@ -12,6 +13,41 @@ _REQUIRED_FIELDS = frozenset(
 _VALID_DIFFICULTIES = frozenset({"Easy", "Medium", "Hard"})
 _MATHS_SCIENCE_SUBJECTS = frozenset({"Maths", "Science"})
 _WORKED_SECTIONS = ("Given:", "Formula:", "Substitution:", "Answer:")
+_NUMBER_RE = re.compile(r"-?\d+(?:\.\d+)?")
+
+
+def _extract_answer_line(explanation: str) -> str:
+    """Text on the worked solution's 'Answer:' line. Caller must ensure it's present."""
+    idx = explanation.rfind("Answer:")
+    rest = explanation[idx + len("Answer:"):]
+    newline_idx = rest.find("\n")
+    return rest if newline_idx == -1 else rest[:newline_idx]
+
+
+def _first_number(text: str) -> float | None:
+    match = _NUMBER_RE.search(text.replace(",", ""))
+    return float(match.group()) if match else None
+
+
+def _normalize(text: str) -> str:
+    return " ".join(text.lower().strip().split())
+
+
+def _worked_answer_matches_option(explanation: str, option_text: str) -> bool:
+    """Does the worked solution's final Answer: line agree with the chosen option?
+
+    Numbers are compared numerically (tolerant of unit text differing, e.g.
+    '1100 watts' vs '1100 W'). Non-numeric answers fall back to a substring
+    match on normalized text.
+    """
+    answer_line = _extract_answer_line(explanation)
+    opt_num = _first_number(option_text)
+    ans_num = _first_number(answer_line)
+    if opt_num is not None and ans_num is not None:
+        tolerance = max(abs(opt_num), 1e-9) * 0.01
+        return abs(opt_num - ans_num) <= tolerance
+    norm_opt, norm_ans = _normalize(option_text), _normalize(answer_line)
+    return norm_opt in norm_ans or norm_ans in norm_opt
 
 
 @dataclass
@@ -53,6 +89,15 @@ def check_question(q: dict, subject: str) -> CheckResult:
             return CheckResult(
                 False,
                 f"Maths/Science explanation must include: {', '.join(missing_sections)}",
+            )
+
+        # 6. The worked solution's Answer: line must agree with the chosen option.
+        option_text = options[answer]
+        if not _worked_answer_matches_option(explanation, option_text):
+            letter = "ABCD"[answer]
+            return CheckResult(
+                False,
+                f"Worked solution's Answer line doesn't match option {letter} ({option_text!r})",
             )
 
     return CheckResult(True)

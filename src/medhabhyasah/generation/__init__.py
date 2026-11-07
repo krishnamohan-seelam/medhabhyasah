@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import anthropic
+import openai
 
 from medhabhyasah import credentials, model_config, safe_log
 from medhabhyasah.model_config import ModelSettings
@@ -105,13 +106,16 @@ def _failure_kind(exc: BaseException) -> str:
     code = code if isinstance(code, int) else None
     text = str(exc).lower()
 
-    if isinstance(exc, (anthropic.APITimeoutError, TimeoutError)) or "timeout" in name:
+    if isinstance(exc, (anthropic.APITimeoutError, openai.APITimeoutError, TimeoutError)) or "timeout" in name:
         return "timeout"
-    if isinstance(exc, (anthropic.APIConnectionError, ConnectionError)) or "connecterror" in name:
+    if (
+        isinstance(exc, (anthropic.APIConnectionError, openai.APIConnectionError, ConnectionError))
+        or "connecterror" in name
+    ):
         return "network"
-    if "credit balance" in text or "billing" in text:
+    if "credit balance" in text or "billing" in text or "insufficient_quota" in text:
         return "billing"
-    if isinstance(exc, anthropic.RateLimitError) or code == 429:
+    if isinstance(exc, (anthropic.RateLimitError, openai.RateLimitError)) or code == 429:
         return "rate_limit"
     if code is not None and code >= 500:
         return "outage"
@@ -132,6 +136,14 @@ def _classify_anthropic_error(exc: Exception, model: str) -> ProviderAccessError
         return ProviderAccessError("model_unavailable", "anthropic", model)
     if isinstance(exc, (anthropic.AuthenticationError, anthropic.PermissionDeniedError)):
         return ProviderAccessError("key_rejected", "anthropic", model)
+    return None
+
+
+def _classify_openai_error(exc: Exception, model: str) -> ProviderAccessError | None:
+    if isinstance(exc, openai.NotFoundError):
+        return ProviderAccessError("model_unavailable", "openai", model)
+    if isinstance(exc, (openai.AuthenticationError, openai.PermissionDeniedError)):
+        return ProviderAccessError("key_rejected", "openai", model)
     return None
 
 
@@ -215,6 +227,33 @@ def _generate_anthropic(api_key: str, prompt: str, cfg: ModelSettings) -> Genera
     return GenerationResult(questions=questions, api_cost_usd=api_cost_usd)
 
 
+def _generate_openai(api_key: str, prompt: str, cfg: ModelSettings) -> GenerationResult:
+    client = openai.OpenAI(api_key=api_key)
+    try:
+        response = client.chat.completions.create(
+            model=cfg.model,
+            max_completion_tokens=16000,
+            messages=[
+                {"role": "system", "content": _SYSTEM},
+                {"role": "user", "content": prompt},
+            ],
+        )
+    except Exception as exc:
+        raise (_classify_openai_error(exc, cfg.model) or exc) from None
+    raw = response.choices[0].message.content or ""
+    usage = response.usage
+    input_tokens = usage.prompt_tokens if usage else 0
+    output_tokens = usage.completion_tokens if usage else 0
+    api_cost_usd = (
+        (input_tokens / 1_000_000) * cfg.input_cost_per_mtok
+        + (output_tokens / 1_000_000) * cfg.output_cost_per_mtok
+    )
+    questions = json.loads(raw.strip())
+    if not isinstance(questions, list):
+        raise ValueError("OpenAI API did not return a JSON array")
+    return GenerationResult(questions=questions, api_cost_usd=api_cost_usd)
+
+
 def _generate_gemini(api_key: str, prompt: str, cfg: ModelSettings) -> GenerationResult:
     from google import genai
     from google.genai import types as genai_types
@@ -268,6 +307,8 @@ def generate_questions(
             raise GenerationFailure("no_key", f"{name} API key not configured in Credential Manager")
         if provider == "anthropic":
             return _generate_anthropic(api_key, prompt, cfg)
+        if provider == "openai":
+            return _generate_openai(api_key, prompt, cfg)
         return _generate_gemini(api_key, prompt, cfg)
     except (ProviderAccessError, GenerationFailure):
         raise

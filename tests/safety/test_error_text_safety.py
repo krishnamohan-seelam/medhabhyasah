@@ -11,20 +11,22 @@ from fastapi.testclient import TestClient
 _ANT_KEY = "sk-ant-api03-REALLOOKINGSECRET0123456789"
 _ODD_KEY = "custom-format-key-ZZZ987654321"   # stored key with no known prefix
 _GEM_KEY = "AIzaSyFAKEFAKEFAKEFAKEFAKEFAKE12345"
+_OPENAI_KEY = "sk-FAKEOPENAIKEYLOOKINGSECRET0123456789"
 _PIN = {"X-Parent-Pin": "1234"}
 
 
 def _kr():
     kr = MagicMock()
     kr.get_password = MagicMock(side_effect=lambda s, u: {
-        "anthropic-api-key": _ODD_KEY, "gemini-api-key": None, "parent-pin": "1234"}.get(u))
+        "anthropic-api-key": _ODD_KEY, "gemini-api-key": None,
+        "openai-api-key": None, "parent-pin": "1234"}.get(u))
     return kr
 
 
 def _leaky(cls=Exception, status=None, text=""):
     """An error whose text carries keys in several shapes, as a bad proxy or SDK might."""
     body = (f"{text} x-api-key: {_ANT_KEY} key={_GEM_KEY} Authorization: Bearer abc123def456ghi "
-            f"stored={_ODD_KEY}")
+            f"stored={_ODD_KEY} openai={_OPENAI_KEY}")
     if status is None:
         return cls(body)
     request = httpx.Request("POST", "https://api.anthropic.com/v1/messages")
@@ -61,7 +63,7 @@ def _flush_log():
         h.flush()
 
 
-_KEYS = (_ANT_KEY, _ODD_KEY, _GEM_KEY, "abc123def456ghi")
+_KEYS = (_ANT_KEY, _ODD_KEY, _GEM_KEY, _OPENAI_KEY, "abc123def456ghi")
 
 
 @pytest.mark.parametrize("error", [
@@ -95,8 +97,10 @@ def test_unknown_error_shows_only_fixed_message_and_logs_detail(client):
 def test_scrub_removes_stored_and_pattern_keys_and_caps_length():
     with patch("medhabhyasah.credentials.keyring", _kr()):
         from medhabhyasah import safe_log
-        out = safe_log.scrub(f"a {_ODD_KEY} b {_ANT_KEY} c {_GEM_KEY} " + "x" * 10_000)
-    assert not any(k in out for k in (_ODD_KEY, _ANT_KEY, _GEM_KEY))
+        out = safe_log.scrub(
+            f"a {_ODD_KEY} b {_ANT_KEY} c {_GEM_KEY} d {_OPENAI_KEY} " + "x" * 10_000
+        )
+    assert not any(k in out for k in (_ODD_KEY, _ANT_KEY, _GEM_KEY, _OPENAI_KEY))
     assert len(out) < 4100
 
 
